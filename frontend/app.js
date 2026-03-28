@@ -48,6 +48,7 @@ function setState(name) {
 
 let ws = null;
 let wsReady = false;
+let reconnectDelay = 1000;
 
 function connectWS() {
   setConnStatus('connecting', 'Connecting…');
@@ -74,11 +75,15 @@ function connectWS() {
     }
   };
 
-  ws.onclose = () => {
+  ws.onclose = (evt) => {
     wsReady = false;
+    if (evt.code === 1000) {
+      setConnStatus('error', 'Session ended');
+      return;
+    }
     setConnStatus('error', 'Disconnected');
-    // Reconnect after 3s
-    setTimeout(connectWS, 3000);
+    reconnectDelay = Math.min((reconnectDelay || 1000) * 2, 15000);
+    setTimeout(connectWS, reconnectDelay);
   };
 
   ws.onerror = (e) => {
@@ -99,6 +104,7 @@ function handleServerMessage(msg) {
   switch (msg.type) {
     case 'ready':
       wsReady = true;
+      reconnectDelay = 1000;
       setConnStatus('connected', 'Ready');
       break;
 

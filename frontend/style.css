@@ -118,7 +118,7 @@ html, body {
 #state-idle {
   background: var(--bg);
   padding: calc(var(--safe-top) + 48px) 32px calc(var(--safe-bottom) + 32px);
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
 }
 
@@ -136,6 +136,7 @@ html, body {
 
 .idle-header {
   z-index: 1;
+  align-self: flex-start;
 }
 
 .tagline {
@@ -155,6 +156,7 @@ html, body {
   justify-content: center;
   gap: 32px;
   z-index: 1;
+  align-self: stretch;
 }
 
 /* Mic button */
@@ -225,6 +227,7 @@ html, body {
   align-items: center;
   gap: 8px;
   z-index: 1;
+  align-self: flex-start;
 }
 
 .status-dot {

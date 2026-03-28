@@ -124,7 +124,7 @@ def _tool_get_owner_portfolio(owner_name: str, corporate_name: str = "") -> str:
 
 root_agent = Agent(
     name="slumlordwatch",
-    model="gemini-2.5-flash",
+    model="gemini-live-2.5-flash-native-audio",
     description="NYC HPD field intelligence agent for housing inspectors. Delivers spoken building briefings and classifies violations from camera.",
     instruction=SYSTEM_PROMPT,
     tools=[

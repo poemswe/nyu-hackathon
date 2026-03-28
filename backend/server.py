@@ -40,12 +40,12 @@ async def health():
     return {"status": "ok", "service": "slumlordwatch"}
 
 
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+
 @app.get("/")
 async def index():
     return FileResponse(FRONTEND_DIR / "index.html")
-
-
-app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 
 @app.websocket("/ws")
@@ -146,16 +146,16 @@ async def websocket_endpoint(websocket: WebSocket):
                                     "role": getattr(event.content, "role", "model"),
                                 })
 
-                    if event.input_transcription:
+                    if event.input_transcription and event.input_transcription.text:
                         await websocket.send_json({
                             "type": "transcript",
-                            "text": event.input_transcription,
+                            "text": event.input_transcription.text,
                             "role": "user",
                         })
-                    if event.output_transcription:
+                    if event.output_transcription and event.output_transcription.text:
                         await websocket.send_json({
                             "type": "transcript",
-                            "text": event.output_transcription,
+                            "text": event.output_transcription.text,
                             "role": "model",
                         })
             except WebSocketDisconnect:
@@ -163,9 +163,16 @@ async def websocket_endpoint(websocket: WebSocket):
             except Exception as e:
                 logger.error(f"send_to_browser error: {e}")
 
-        async with asyncio.TaskGroup() as tg:
-            tg.create_task(receive_from_browser())
-            tg.create_task(send_to_browser())
+        recv_task = asyncio.create_task(receive_from_browser())
+        send_task = asyncio.create_task(send_to_browser())
+        done, pending = await asyncio.wait(
+            [recv_task, send_task], return_when=asyncio.FIRST_COMPLETED
+        )
+        for task in pending:
+            task.cancel()
+        for task in done:
+            if task.exception():
+                logger.error(f"Task error: {task.exception()}")
 
     except WebSocketDisconnect:
         logger.info("Client disconnected")
