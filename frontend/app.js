@@ -224,6 +224,8 @@ function setConnStatus(status, label) {
 let transcriptBuffer = '';
 let speakingTimeout = null;
 let violationCount = 0;
+let visionDraftLines = [];
+let lastVisionTranscript = '';
 let lastBriefingTranscript = '';
 let briefingTurnLocked = false;
 let briefingLiveText = '';
@@ -257,9 +259,11 @@ function handleTranscript(text, role) {
   } else if (currentState === 'vision') {
     if (role === 'model') {
       document.getElementById('vision-transcript-text').textContent = text;
-      // Count drafted violations (rough heuristic)
-      if (text.toLowerCase().includes('draft') || text.toLowerCase().includes('class')) {
-        violationCount++;
+      const visionClean = normalizeTranscriptText(text);
+      if (visionClean && visionClean !== lastVisionTranscript) {
+        visionDraftLines.push(visionClean);
+        lastVisionTranscript = visionClean;
+        violationCount = visionDraftLines.length;
         document.getElementById('vcount-num').textContent = violationCount;
       }
     }
@@ -703,7 +707,10 @@ document.addEventListener('DOMContentLoaded', () => {
     stopMic();
     setState('idle');
   });
-  document.getElementById('vision-back').addEventListener('click', () => setState('briefing'));
+  document.getElementById('vision-back').addEventListener('click', () => {
+    renderDraftPanel();
+    setState('briefing');
+  });
 
   async function enterVisionMode() {
     violationCount = 0;
@@ -735,6 +742,32 @@ window.addEventListener('beforeunload', () => {
   }
 });
 
+function renderDraftPanel() {
+  const panel = document.getElementById('draft-panel');
+  const lines = document.getElementById('draft-lines');
+  if (!visionDraftLines.length) {
+    panel.style.display = 'none';
+    return;
+  }
+  lines.innerHTML = '';
+  visionDraftLines.forEach((line, i) => {
+    const div = document.createElement('div');
+    div.className = 'draft-line';
+    const num = document.createElement('span');
+    num.className = 'draft-line-num';
+    num.textContent = `${i + 1}.`;
+    const txt = document.createElement('span');
+    txt.className = 'draft-line-text';
+    txt.textContent = line;
+    div.appendChild(num);
+    div.appendChild(txt);
+    lines.appendChild(div);
+  });
+  document.getElementById('draft-count').textContent =
+    `${visionDraftLines.length} observation${visionDraftLines.length === 1 ? '' : 's'}`;
+  panel.style.display = 'block';
+}
+
 function resetBriefing() {
   // Hide and reset all data cards
   ['card-violations', 'card-owner', 'card-complaints', 'card-portfolio'].forEach(id => {
@@ -764,5 +797,10 @@ function resetBriefing() {
   }
   const ctaWrap = document.getElementById('briefing-cta-wrap');
   if (ctaWrap) ctaWrap.style.display = 'none';
+  const draftPanel = document.getElementById('draft-panel');
+  if (draftPanel) draftPanel.style.display = 'none';
+  visionDraftLines = [];
+  lastVisionTranscript = '';
+  violationCount = 0;
   showSpeaking(false);
 }

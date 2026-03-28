@@ -138,6 +138,16 @@
 
   <!-- Scrolling transcript -->
   <div class="briefing-transcript" id="briefing-transcript"></div>
+
+  <!-- Draft review panel (shown after leaving vision mode) -->
+  <div class="draft-panel" id="draft-panel" style="display:none">
+    <div class="draft-panel-header">
+      <div class="draft-label">VIOLATION DRAFT</div>
+      <div class="draft-count" id="draft-count">0 observations</div>
+    </div>
+    <div class="draft-lines" id="draft-lines"></div>
+  </div>
+
   <div class="briefing-cta-wrap" id="briefing-cta-wrap" style="display:none">
     <button class="briefing-cta-btn" id="briefing-cta-vision">Start Visual Inspection</button>
   </div>
@@ -153,7 +163,7 @@
 
   <div class="vision-overlay">
     <div class="vision-header">
-      <button class="back-btn light" id="vision-back">✕</button>
+      <button class="vision-done-btn" id="vision-back">Done — Review Draft</button>
       <div class="wordmark-sm light">SLUMLORDWATCH</div>
       <div class="violation-count-badge" id="violation-count">
         <span id="vcount-num">0</span> drafted
