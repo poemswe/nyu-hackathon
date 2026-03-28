@@ -281,7 +281,6 @@ function handleTranscript(text, role) {
           ...pendingViolation,
           id: violationCount,
         });
-        document.getElementById('vcount-num').textContent = violationCount;
         pendingViolation = null;
         showPendingBadge(false);
       } else if (pendingViolation && rejected) {

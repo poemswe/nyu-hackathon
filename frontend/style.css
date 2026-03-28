@@ -596,16 +596,6 @@ html, body {
   pointer-events: all;
 }
 
-.violation-count-badge {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 500;
-  background: var(--red);
-  color: #fff;
-  padding: 5px 12px;
-  border-radius: 20px;
-  letter-spacing: 0.05em;
-}
 
 /* Analyzing badge — center of screen */
 .analyzing-badge {
@@ -677,12 +667,6 @@ body { overscroll-behavior: none; }
 /* ================================================================
    VISION: Done button & header-right group
    ================================================================ */
-
-.vision-header-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
 .vision-done-btn {
   font-family: var(--font-mono);
