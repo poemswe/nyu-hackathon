@@ -151,6 +151,7 @@ function setConnStatus(status, label) {
 let transcriptBuffer = '';
 let speakingTimeout = null;
 let violationCount = 0;
+let lastBriefingTranscript = '';
 
 function handleTranscript(text, role) {
   if (!text) return;
@@ -189,11 +190,25 @@ function handleTranscript(text, role) {
 
 function appendBriefingTranscript(text) {
   const el = document.getElementById('briefing-transcript');
-  const p = document.createElement('p');
-  p.textContent = text;
-  // Highlight numbers
-  p.innerHTML = p.innerHTML.replace(/\b(\d+)\b/g, '<span class="highlight">$1</span>');
-  el.appendChild(p);
+  // Ignore exact duplicate transcript events.
+  if (text === lastBriefingTranscript) return;
+
+  // Many live transcript streams are cumulative (new text starts with old text).
+  // Replace the last paragraph instead of appending a duplicate block.
+  if (lastBriefingTranscript && text.startsWith(lastBriefingTranscript) && el.lastElementChild) {
+    el.lastElementChild.textContent = text;
+    el.lastElementChild.innerHTML = el.lastElementChild.innerHTML.replace(
+      /\b(\d+)\b/g,
+      '<span class="highlight">$1</span>'
+    );
+  } else {
+    const p = document.createElement('p');
+    p.textContent = text;
+    p.innerHTML = p.innerHTML.replace(/\b(\d+)\b/g, '<span class="highlight">$1</span>');
+    el.appendChild(p);
+  }
+
+  lastBriefingTranscript = text;
   el.scrollTop = el.scrollHeight;
 }
 
@@ -335,7 +350,8 @@ let audioContext = null;
 let micStream = null;
 let scriptProcessor = null;
 
-async function startMic() {
+async function startMic(options = {}) {
+  const { setListeningState = true } = options;
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -356,7 +372,7 @@ async function startMic() {
     scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
 
     scriptProcessor.onaudioprocess = (e) => {
-      if (!wsReady) return;
+      if (!wsReady || agentSpeaking) return;
       const float32 = e.inputBuffer.getChannelData(0);
       const int16 = float32ToInt16(float32);
       sendBinary(MSG_TYPE_AUDIO, int16.buffer);
@@ -366,6 +382,9 @@ async function startMic() {
     scriptProcessor.connect(audioContext.destination);
 
     document.getElementById('mic-button').classList.add('recording');
+    if (setListeningState) {
+      setState('listening');
+    }
 
   } catch (err) {
     console.error('Mic error:', err);
@@ -405,6 +424,7 @@ function float32ToInt16(float32Array) {
 let playbackContext = null;
 const audioQueue = [];
 let isPlaying = false;
+let agentSpeaking = false;
 
 function playAudio(arrayBuffer) {
   if (!playbackContext) {
@@ -412,6 +432,7 @@ function playAudio(arrayBuffer) {
       sampleRate: AUDIO_OUTPUT_RATE
     });
   }
+  agentSpeaking = true;
   audioQueue.push(arrayBuffer);
   if (!isPlaying) drainAudioQueue();
 }
@@ -419,6 +440,7 @@ function playAudio(arrayBuffer) {
 function drainAudioQueue() {
   if (!audioQueue.length) {
     isPlaying = false;
+    agentSpeaking = false;
     return;
   }
   isPlaying = true;
@@ -538,7 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('vision-transcript-text').textContent = '';
     setState('vision');
     // Keep mic running in vision mode
-    if (!micStream) startMic().then(() => setState('vision')).catch(() => {});
+    if (!micStream) startMic({ setListeningState: false }).catch(() => {});
   });
 });
 
@@ -561,5 +583,6 @@ function resetBriefing() {
   document.getElementById('trend-indicator').textContent = '';
   document.getElementById('trend-indicator').className = 'trend-indicator';
   document.getElementById('briefing-transcript').innerHTML = '';
+  lastBriefingTranscript = '';
   showSpeaking(false);
 }

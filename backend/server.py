@@ -88,10 +88,14 @@ async def websocket_endpoint(websocket: WebSocket):
             input_audio_transcription=types.AudioTranscriptionConfig(),
         )
 
+        agent_speaking = False
+        cooldown_until = 0.0
+
         await websocket.send_json({"type": "ready"})
         logger.info(f"Session {session_id} started")
 
         async def receive_from_browser():
+            nonlocal agent_speaking, cooldown_until
             try:
                 while True:
                     try:
@@ -106,6 +110,9 @@ async def websocket_endpoint(websocket: WebSocket):
                             msg_type = raw[0]
                             payload = raw[1:]
                             if msg_type == 0x01:
+                                import time
+                                if agent_speaking or time.time() < cooldown_until:
+                                    continue
                                 live_request_queue.send_realtime(
                                     types.Blob(data=payload, mime_type="audio/pcm;rate=16000")
                                 )
@@ -128,6 +135,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 live_request_queue.close()
 
         async def send_to_browser():
+            nonlocal agent_speaking, cooldown_until
             try:
                 async for event in runner.run_live(
                     user_id="inspector",
@@ -138,13 +146,13 @@ async def websocket_endpoint(websocket: WebSocket):
                     if event.content and event.content.parts:
                         for part in event.content.parts:
                             if part.inline_data and "audio" in (part.inline_data.mime_type or ""):
+                                agent_speaking = True
                                 await websocket.send_bytes(part.inline_data.data)
-                            if part.text:
-                                await websocket.send_json({
-                                    "type": "transcript",
-                                    "text": part.text,
-                                    "role": getattr(event.content, "role", "model"),
-                                })
+
+                    if event.turn_complete:
+                        import time
+                        agent_speaking = False
+                        cooldown_until = time.time() + 2.0
 
                     if event.input_transcription and event.input_transcription.text:
                         await websocket.send_json({
