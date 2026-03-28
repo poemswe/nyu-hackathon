@@ -130,21 +130,34 @@ async def websocket_endpoint(websocket: WebSocket):
         async def send_to_browser():
             try:
                 async for event in runner.run_live(
-                    session=session,
+                    user_id="inspector",
+                    session_id=session_id,
                     live_request_queue=live_request_queue,
                     run_config=run_config,
                 ):
-                    if hasattr(event, "content") and event.content:
+                    if event.content and event.content.parts:
                         for part in event.content.parts:
-                            if hasattr(part, "inline_data") and part.inline_data:
-                                if "audio" in (part.inline_data.mime_type or ""):
-                                    await websocket.send_bytes(part.inline_data.data)
-                            if hasattr(part, "text") and part.text:
+                            if part.inline_data and "audio" in (part.inline_data.mime_type or ""):
+                                await websocket.send_bytes(part.inline_data.data)
+                            if part.text:
                                 await websocket.send_json({
                                     "type": "transcript",
                                     "text": part.text,
                                     "role": getattr(event.content, "role", "model"),
                                 })
+
+                    if event.input_transcription:
+                        await websocket.send_json({
+                            "type": "transcript",
+                            "text": event.input_transcription,
+                            "role": "user",
+                        })
+                    if event.output_transcription:
+                        await websocket.send_json({
+                            "type": "transcript",
+                            "text": event.output_transcription,
+                            "role": "model",
+                        })
             except WebSocketDisconnect:
                 pass
             except Exception as e:
