@@ -533,7 +533,11 @@ async function unlockPlaybackAudio() {
     });
   }
   if (playbackContext.state === 'suspended') {
-    await playbackContext.resume();
+    try {
+      await playbackContext.resume();
+    } catch (e) {
+      console.warn('Audio resume blocked:', e);
+    }
   }
   if (playbackContext.state === 'running' && !playbackUnlocked) {
     const silent = playbackContext.createBuffer(1, 1, AUDIO_OUTPUT_RATE);
@@ -546,6 +550,7 @@ async function unlockPlaybackAudio() {
   if (playbackContext.state === 'running' && audioQueue.length && !isPlaying) {
     drainAudioQueue();
   }
+  return playbackContext.state === 'running';
 }
 
 function playAudio(arrayBuffer) {
@@ -667,12 +672,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Mobile autoplay policy workaround: unlock once on first user gesture.
   const unlockOnce = async () => {
-    await unlockPlaybackAudio();
-    window.removeEventListener('touchstart', unlockOnce);
-    window.removeEventListener('pointerdown', unlockOnce);
+    const ok = await unlockPlaybackAudio();
+    if (ok) {
+      window.removeEventListener('touchstart', unlockOnce);
+      window.removeEventListener('pointerdown', unlockOnce);
+      window.removeEventListener('click', unlockOnce);
+    }
   };
   window.addEventListener('touchstart', unlockOnce, { passive: true });
   window.addEventListener('pointerdown', unlockOnce, { passive: true });
+  window.addEventListener('click', unlockOnce, { passive: true });
 
   // Mic button (idle state)
   document.getElementById('mic-button').addEventListener('click', async () => {
