@@ -69,7 +69,7 @@ Browser (Mobile PWA)          Python Backend (Cloud Run)        Google Cloud
 - **Server-to-server** WebSocket pattern. API key stays server-side. ADK handles tool execution automatically.
 - **Cloud Run** for the backend. Cloud Functions cannot hold WebSocket connections for the duration of a Live API session (up to 10 minutes).
 - **PWA on Firebase Hosting.** Judges open a URL on their phone. No install.
-- **No database.** No Firestore, no auth, no user accounts. Stateless — the agent assembles everything fresh per address. Demo reliability comes from local JSON files checked into the repo (watchlist, portfolio stats, cached API responses for demo addresses), not from a database or external cache.
+- **No database.** No Firestore, no auth, no user accounts. Best-effort live queries with cache-first for demo addresses. Local JSON files checked into the repo (watchlist, portfolio stats, cached API responses) provide demo reliability without any external database or cache service.
 - **ADK over raw Gemini API.** ADK auto-executes tools during streaming sessions and handles reconnection. Raw Live API requires manual tool response handling.
 - **Start with `adk web`** for development. Build custom frontend only if time permits.
 
@@ -90,16 +90,16 @@ Voice: Kore
 - **Input:** address (street number + street name), borough
 - **API:** HPD Violations `https://data.cityofnewyork.us/resource/wvxf-dwi5.json`
 - **Query:** `?housenumber={num}&streetname={street}&boro={borough}&violationstatus=Open`
-- **Returns:** Count by class (A/B/C), open violations with descriptions and dates. Also extracts `registrationid` and constructs BBL for downstream tools.
+- **Returns:** Count by class (A/B/C), open violations with descriptions and dates. Constructs BBL for downstream tools.
 - **BBL construction:** The violations dataset has separate `boroid`, `block`, `lot` fields — no `bbl` field. Construct as: `bbl = f"{boroid}{block.zfill(5)}{lot.zfill(4)}"` (1-digit borough + 5-digit block + 4-digit lot = 10-digit string).
-- **False cert query:** Separate query for recently certified violations: `$where=currentstatus='CERTIFICATION CLOSEOUT' AND currentstatusdate > '{90_days_ago}'`. This catches violations the landlord claims were fixed.
+- **False cert query:** Separate query for recently certified violations: `$where=currentstatus='CERTIFICATION CLOSEOUT' AND currentstatusdate > '{90_days_ago}'`. Date must be ISO 8601 floating timestamp (e.g., `2026-01-01T00:00:00`). This catches violations the landlord claims were fixed.
 
 ### Tool 2: get_building_complaints
 
 - **Input:** BBL (constructed by Tool 1)
 - **Depends on:** Tool 1 (needs BBL)
 - **API:** HPD Complaints `https://data.cityofnewyork.us/resource/ygpa-z7cr.json`
-- **Query:** `?bbl={bbl}&$where=received_date > '{12_months_ago}'`
+- **Query:** `?bbl={bbl}&$where=received_date > '{12_months_ago}'` (date as ISO 8601 floating timestamp, e.g., `2025-03-28T00:00:00`)
 - **Returns:** Total complaints last 12 months, breakdown by `major_category`, 3-month vs 12-month trend, most recent complaints.
 
 ### Tool 3: get_building_owner
@@ -165,7 +165,7 @@ No address input field, no navigation, no menu, no settings. HTML + vanilla JS +
 
 | Dataset | ID | Endpoint | Join Key |
 |---|---|---|---|
-| HPD Violations | `wvxf-dwi5` | `data.cityofnewyork.us/resource/wvxf-dwi5.json` | BBL, registrationid |
+| HPD Violations | `wvxf-dwi5` | `data.cityofnewyork.us/resource/wvxf-dwi5.json` | boroid+block+lot (construct BBL), registrationid |
 | HPD Complaints | `ygpa-z7cr` | `data.cityofnewyork.us/resource/ygpa-z7cr.json` | BBL |
 | HPD Registration | `tesw-yqqr` | `data.cityofnewyork.us/resource/tesw-yqqr.json` | registrationid |
 | Registration Contacts | `feu5-w2e2` | `data.cityofnewyork.us/resource/feu5-w2e2.json` | registrationid |
