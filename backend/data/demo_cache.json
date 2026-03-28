@@ -1,0 +1,104 @@
+{
+  "VIOLATIONS:1520:SEDGWICK AVE:BRONX": {
+    "bbl": "2024430001",
+    "address": {
+      "housenumber": "1520",
+      "streetname": "SEDGWICK AVE",
+      "borough": "BRONX",
+      "boroid": "2"
+    },
+    "open_violations": {
+      "total": 47,
+      "class_a": 11,
+      "class_b": 22,
+      "class_c": 14,
+      "details": [
+        { "class": "C", "novdescription": "LEAD BASED PAINT HAZARD IN UNIT", "inspectiondate": "2025-11-15", "apt": "3B" },
+        { "class": "C", "novdescription": "LEAD BASED PAINT HAZARD IN UNIT", "inspectiondate": "2025-11-15", "apt": "5A" },
+        { "class": "C", "novdescription": "NO HEAT IN MULTIPLE UNITS", "inspectiondate": "2025-12-01", "apt": "MULTIPLE" },
+        { "class": "C", "novdescription": "NO HOT WATER", "inspectiondate": "2025-12-10", "apt": "MULTIPLE" },
+        { "class": "B", "novdescription": "ROACH INFESTATION", "inspectiondate": "2025-10-22", "apt": "4C" },
+        { "class": "B", "novdescription": "MOLD IN BATHROOM", "inspectiondate": "2025-10-22", "apt": "2A" },
+        { "class": "B", "novdescription": "DEFECTIVE PLUMBING", "inspectiondate": "2025-09-18", "apt": "6B" },
+        { "class": "B", "novdescription": "RATS IN CELLAR", "inspectiondate": "2025-11-05", "apt": "CELLAR" },
+        { "class": "A", "novdescription": "INADEQUATE LIGHTING IN PUBLIC HALL", "inspectiondate": "2025-08-14", "apt": "PUBLIC" },
+        { "class": "A", "novdescription": "MISSING DOOR SELF-CLOSER", "inspectiondate": "2025-08-14", "apt": "ROOF" }
+      ]
+    },
+    "false_certs": [
+      { "novdescription": "MOLD IN BATHROOM", "certifieddate": "2026-01-15", "unit": "4B", "class": "B" },
+      { "novdescription": "LEAD BASED PAINT HAZARD IN UNIT", "certifieddate": "2026-01-22", "unit": "2A", "class": "C" },
+      { "novdescription": "BROKEN WINDOW", "certifieddate": "2026-02-01", "unit": "6C", "class": "B" }
+    ],
+    "error": null
+  },
+  "COMPLAINTS:2024430001": {
+    "total_12mo": 23,
+    "categories": {
+      "HEAT/HOT WATER": 14,
+      "UNSANITARY CONDITION": 6,
+      "PLUMBING": 2,
+      "PAINT/PLASTER": 1
+    },
+    "trend": {
+      "last_3mo": 8,
+      "prior_9mo": 15,
+      "trending_up": true
+    },
+    "recent": [
+      { "type": "EMERGENCY", "major_category": "HEAT/HOT WATER", "status": "Open", "received_date": "2026-03-10" },
+      { "type": "COMPLAINT", "major_category": "HEAT/HOT WATER", "status": "Open", "received_date": "2026-03-05" },
+      { "type": "COMPLAINT", "major_category": "UNSANITARY CONDITION", "status": "Open", "received_date": "2026-02-28" },
+      { "type": "COMPLAINT", "major_category": "HEAT/HOT WATER", "status": "Close", "received_date": "2026-02-20" },
+      { "type": "COMPLAINT", "major_category": "PLUMBING", "status": "Open", "received_date": "2026-02-15" }
+    ],
+    "error": null
+  },
+  "OWNER:1520:SEDGWICK AVE:2": {
+    "individual_owner": null,
+    "corporate_owner": "KOSCAL 59 LLC",
+    "managing_agent": "KOSCAL MANAGEMENT",
+    "registration_id": "391827",
+    "watchlist": {
+      "rank": 3,
+      "name": "KOSCAL 59 LLC",
+      "year": 2025,
+      "buildings": 29,
+      "violations": 2300
+    },
+    "error": null
+  },
+  "VIOLATIONS:515:PARK AVE:MANHATTAN": {
+    "bbl": "1013090001",
+    "address": {
+      "housenumber": "515",
+      "streetname": "PARK AVE",
+      "borough": "MANHATTAN",
+      "boroid": "1"
+    },
+    "open_violations": {
+      "total": 0,
+      "class_a": 0,
+      "class_b": 0,
+      "class_c": 0,
+      "details": []
+    },
+    "false_certs": [],
+    "error": null
+  },
+  "COMPLAINTS:1013090001": {
+    "total_12mo": 0,
+    "categories": {},
+    "trend": { "last_3mo": 0, "prior_9mo": 0, "trending_up": false },
+    "recent": [],
+    "error": null
+  },
+  "OWNER:515:PARK AVE:1": {
+    "individual_owner": null,
+    "corporate_owner": "515 PARK AVENUE TOWER LLC",
+    "managing_agent": "BROWN HARRIS STEVENS",
+    "registration_id": "882341",
+    "watchlist": null,
+    "error": null
+  }
+}

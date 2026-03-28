@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlumlordWatch — Hackathon Roadmap</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0c0c0c;
+  --bg2: #141414;
+  --bg3: #1c1c1c;
+  --border: #262626;
+  --border-hi: #333;
+  --text: #f0ede8;
+  --text-2: #9a9690;
+  --text-3: #5a5752;
+  --red: #e53935;
+  --red-dim: rgba(229,57,53,0.12);
+  --amber: #f59e0b;
+  --amber-dim: rgba(245,158,11,0.12);
+  --green: #22c55e;
+  --green-dim: rgba(34,197,94,0.12);
+  --blue: #3b82f6;
+  --blue-dim: rgba(59,130,246,0.12);
+  --purple: #a855f7;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-sans: 'IBM Plex Sans', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  padding: 48px 24px 80px;
+  max-width: 960px;
+  margin: 0 auto;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Header */
+.header { margin-bottom: 48px; }
+.wordmark {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+.wordmark .lord { color: var(--red); }
+.subtitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+/* Section headers */
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── ROADMAP TIMELINE ── */
+.timeline { margin-bottom: 56px; }
+.hour-block {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 0 20px;
+  margin-bottom: 2px;
+}
+.hour-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  padding-top: 14px;
+  text-align: right;
+  line-height: 1;
+  white-space: nowrap;
+}
+.hour-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  position: relative;
+  transition: border-color 0.15s;
+}
+.hour-card:hover { border-color: var(--border-hi); }
+.hour-card.critical { border-left: 3px solid var(--red); }
+.hour-card.done { border-left: 3px solid var(--green); opacity: 0.6; }
+
+.hour-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.hour-milestone {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+}
+.hour-milestone.achieved {
+  color: var(--green);
+}
+.hour-milestone.critical-milestone {
+  color: var(--red);
+}
+
+.tasks {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.task {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.5;
+  cursor: pointer;
+  padding: 2px 0;
+  user-select: none;
+}
+.task-check {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border-hi);
+  border-radius: 3px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s;
+  font-size: 10px;
+}
+.task.checked .task-check {
+  background: var(--green);
+  border-color: var(--green);
+  color: #000;
+}
+.task.checked .task-text {
+  text-decoration: line-through;
+  color: var(--text-3);
+}
+.task-text { flex: 1; }
+
+/* Phase badges */
+.phase-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 3px;
+  margin-bottom: 8px;
+}
+.phase-foundation { background: var(--red-dim); color: var(--red); }
+.phase-data       { background: var(--amber-dim); color: var(--amber); }
+.phase-vision     { background: var(--purple); color: #fff; background: rgba(168,85,247,0.15); }
+.phase-frontend   { background: var(--blue-dim); color: var(--blue); }
+.phase-hardening  { background: var(--green-dim); color: var(--green); }
+
+/* ── ARCHITECTURE ── */
+.arch { margin-bottom: 56px; }
+
+.arch-diagram {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 28px;
+  overflow-x: auto;
+}
+
+.arch-layer {
+  margin-bottom: 20px;
+}
+.arch-layer-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.arch-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+.arch-box {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  position: relative;
+}
+.arch-box.active-box { border-color: var(--red); color: var(--red); }
+.arch-box.data-box { border-color: #333; color: var(--text-2); }
+.arch-box .box-sub {
+  font-size: 10px;
+  color: var(--text-3);
+  margin-top: 3px;
+}
+
+.arch-connector {
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  flex-direction: column;
+  gap: 2px;
+}
+.conn-line {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+  margin: 0 auto;
+}
+.conn-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 0.1em;
+  text-align: center;
+}
+
+/* ── TOOL ORCHESTRATION ── */
+.tools { margin-bottom: 56px; }
+.tool-flow {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+}
+.tool-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.tool-step:last-child { border-bottom: none; }
+.tool-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  padding-top: 2px;
+  min-width: 32px;
+}
+.tool-body { flex: 1; }
+.tool-name {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.tool-desc { font-size: 13px; color: var(--text-2); line-height: 1.5; }
+.tool-detail {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.6;
+}
+.tool-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.badge-seq { background: var(--red-dim); color: var(--red); }
+.badge-par { background: var(--blue-dim); color: var(--blue); }
+.badge-instant { background: var(--green-dim); color: var(--green); }
+
+/* ── RISK TABLE ── */
+.risks { margin-bottom: 56px; }
+.risk-table {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.risk-row {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  border-bottom: 1px solid var(--border);
+}
+.risk-row:last-child { border-bottom: none; }
+.risk-row.header {
+  background: var(--bg3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.risk-cell {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.5;
+  border-right: 1px solid var(--border);
+}
+.risk-cell:last-child { border-right: none; }
+.risk-row.header .risk-cell { color: var(--text-3); font-size: 10px; padding: 10px 16px; }
+.risk-high { color: var(--red); }
+.risk-med  { color: var(--amber); }
+
+/* ── CUT ORDER ── */
+.cut-order { margin-bottom: 56px; }
+.cut-list { display: flex; flex-direction: column; gap: 8px; }
+.cut-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.cut-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  min-width: 20px;
+}
+.never-cut {
+  color: var(--red);
+  border-color: var(--red-dim);
+  background: var(--red-dim);
+  font-weight: 500;
+}
+
+/* ── DEMO SCRIPT ── */
+.demo-script { margin-bottom: 56px; }
+.script-block {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.script-beat {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  border-bottom: 1px solid var(--border);
+}
+.script-beat:last-child { border-bottom: none; }
+.beat-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  padding: 14px 16px;
+  background: var(--bg3);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.beat-label {
+  font-weight: 500;
+  color: var(--text-2);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.beat-content {
+  padding: 14px 18px;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.6;
+}
+.beat-content strong { color: var(--text); font-weight: 500; }
+.beat-content .cmd {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--amber);
+  margin: 6px 0;
+  padding: 6px 10px;
+  background: rgba(245,158,11,0.06);
+  border-radius: 4px;
+  display: block;
+}
+
+/* Progress tracker */
+.progress-bar-wrap {
+  background: var(--bg3);
+  border-radius: 4px;
+  height: 4px;
+  margin: 16px 0 0;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--red);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+.progress-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 6px;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="wordmark">SLUM<span class="lord">LORD</span>WATCH</div>
+  <div class="subtitle">Hackathon Execution Roadmap · 10-Hour Build Plan</div>
+  <div id="progress-label" class="progress-label">0 / 20 tasks complete</div>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     ROADMAP
+═══════════════════════════════════════════════════════════ -->
+<div class="timeline">
+  <div class="section-label">Execution roadmap</div>
+
+  <!-- Hours 1–2 -->
+  <div class="hour-block">
+    <div class="hour-label">HR 1–2</div>
+    <div class="hour-card critical">
+      <div class="phase-badge phase-foundation">⚡ Foundation</div>
+      <div class="hour-title">ADK agent + voice in/out</div>
+      <div class="hour-milestone critical-milestone">Milestone: Say "hello," hear response</div>
+      <div class="tasks">
+        <div class="task" data-id="t1"><div class="task-check"></div><span class="task-text">Install dependencies: <code>pip install google-adk</code></span></div>
+        <div class="task" data-id="t2"><div class="task-check"></div><span class="task-text">Set <code>GOOGLE_API_KEY</code> env var</span></div>
+        <div class="task" data-id="t3"><div class="task-check"></div><span class="task-text">Write <code>backend/agent.py</code> — ADK agent, system prompt, voice Kore (already done)</span></div>
+        <div class="task" data-id="t4"><div class="task-check"></div><span class="task-text">Run <code>cd backend && adk web</code> — confirm mic → Gemini → audio output</span></div>
+        <div class="task" data-id="t5"><div class="task-check"></div><span class="task-text">Debug until voice round-trip works. Do not proceed until this is solid.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hours 3–4 -->
+  <div class="hour-block">
+    <div class="hour-label">HR 3–4</div>
+    <div class="hour-card critical">
+      <div class="phase-badge phase-data">🗂 Tools + Data</div>
+      <div class="hour-title">4 tools · watchlist · demo cache</div>
+      <div class="hour-milestone critical-milestone">Milestone: Speak address, hear full briefing with real data</div>
+      <div class="tasks">
+        <div class="task" data-id="t6"><div class="task-check"></div><span class="task-text">Tool 1 working: <code>get_building_violations</code> — BBL construction, false-cert query</span></div>
+        <div class="task" data-id="t7"><div class="task-check"></div><span class="task-text">Tool 2 working: <code>get_building_complaints</code> — 12-month window, trend calc</span></div>
+        <div class="task" data-id="t8"><div class="task-check"></div><span class="task-text">Tool 3 working: <code>get_building_owner</code> — registration + contacts + alias table</span></div>
+        <div class="task" data-id="t9"><div class="task-check"></div><span class="task-text">Tool 4 working: <code>get_owner_portfolio</code> — static JSON lookup (instant)</span></div>
+        <div class="task" data-id="t10"><div class="task-check"></div><span class="task-text">Run <code>python scripts/build_cache.py</code> to pre-cache 1520 Sedgwick + 515 Park</span></div>
+        <div class="task" data-id="t11"><div class="task-check"></div><span class="task-text">Test full briefing: speak "1520 Sedgwick Avenue, Bronx" → hear complete brief</span></div>
+        <div class="task" data-id="t12"><div class="task-check"></div><span class="task-text">Test contrast: speak "515 Park Avenue, Manhattan" → hear silence land</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hour 5 -->
+  <div class="hour-block">
+    <div class="hour-label">HR 5</div>
+    <div class="hour-card">
+      <div class="phase-badge phase-vision">👁 Vision</div>
+      <div class="hour-title">Camera streaming + violation classification</div>
+      <div class="hour-milestone">Milestone: Point at photo, agent classifies and drafts</div>
+      <div class="tasks">
+        <div class="task" data-id="t13"><div class="task-check"></div><span class="task-text">Enable camera frame capture in ADK session (1 FPS JPEG)</span></div>
+        <div class="task" data-id="t14"><div class="task-check"></div><span class="task-text">Test with prepared photos: water damage → Class C, mold → Class B, peeling paint → Class C (pre-1978)</span></div>
+        <div class="task" data-id="t15"><div class="task-check"></div><span class="task-text">Confirm agent frames suggestions correctly: "This looks like it could be…"</span></div>
+      </div>
+      <div style="margin-top:10px; font-size:12px; color:var(--text-3); font-family:var(--font-mono);">
+        ⚠ Fallback: drop vision, briefing-only is still a strong demo
+      </div>
+    </div>
+  </div>
+
+  <!-- Hours 6–7 -->
+  <div class="hour-block">
+    <div class="hour-label">HR 6–7</div>
+    <div class="hour-card">
+      <div class="phase-badge phase-frontend">📱 Frontend + Deploy</div>
+      <div class="hour-title">PWA · FastAPI bridge · Firebase + Cloud Run</div>
+      <div class="hour-milestone">Milestone: Full flow on phone, deployed</div>
+      <div class="tasks">
+        <div class="task" data-id="t16"><div class="task-check"></div><span class="task-text">Serve <code>frontend/</code> locally and confirm 4-state UI renders on phone</span></div>
+        <div class="task" data-id="t17"><div class="task-check"></div><span class="task-text">Start FastAPI: <code>uvicorn backend.server:app --reload --port 8080</code></span></div>
+        <div class="task" data-id="t18"><div class="task-check"></div><span class="task-text">Connect PWA WebSocket → FastAPI → ADK → Gemini Live end-to-end</span></div>
+        <div class="task" data-id="t19"><div class="task-check"></div><span class="task-text">Run <code>./deploy.sh</code> — Firebase Hosting + Cloud Run live</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hour 8 -->
+  <div class="hour-block">
+    <div class="hour-label">HR 8</div>
+    <div class="hour-card">
+      <div class="phase-badge phase-hardening">🔒 Hardening</div>
+      <div class="hour-title">End-to-end testing · prompt tuning · fallbacks</div>
+      <div class="hour-milestone">Milestone: Reliable demo, 3–4 addresses</div>
+      <div class="tasks">
+        <div class="task" data-id="t20"><div class="task-check"></div><span class="task-text">Full run-through on phone for all demo addresses — fix any issues</span></div>
+        <div class="task" data-id="t21"><div class="task-check"></div><span class="task-text">Time the briefing — must be under 45 seconds. Adjust system prompt if needed.</span></div>
+        <div class="task" data-id="t22"><div class="task-check"></div><span class="task-text">Simulate API timeout — confirm cache fallback kicks in correctly</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hours 9–10 -->
+  <div class="hour-block">
+    <div class="hour-label">HR 9–10</div>
+    <div class="hour-card">
+      <div class="phase-badge phase-hardening">🎤 Demo Prep</div>
+      <div class="hour-title">Rehearsal · fallback video · photos printed</div>
+      <div class="hour-milestone">Milestone: Ready to present</div>
+      <div class="tasks">
+        <div class="task" data-id="t23"><div class="task-check"></div><span class="task-text">Print or display violation photos on tablet for vision demo (mold, water damage, peeling paint)</span></div>
+        <div class="task" data-id="t24"><div class="task-check"></div><span class="task-text">Record fallback video of full demo — just in case</span></div>
+        <div class="task" data-id="t25"><div class="task-check"></div><span class="task-text">Rehearse 3-minute demo script 3× — nail the silence moment on Park Ave</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     TOOL ORCHESTRATION
+═══════════════════════════════════════════════════════════ -->
+<div class="tools">
+  <div class="section-label">Tool orchestration</div>
+  <div class="tool-flow">
+    <div class="tool-step">
+      <div class="tool-num">T1</div>
+      <div class="tool-body">
+        <div class="tool-name">get_building_violations <span class="tool-badge badge-seq">sequential · runs first</span></div>
+        <div class="tool-desc">HPD Violations API (wvxf-dwi5). Returns open violations by class + constructs BBL for downstream tools.</div>
+        <div class="tool-detail">
+          → Cache key: <code>VIOLATIONS:{housenumber}:{streetname}:{borough}</code><br>
+          → BBL: <code>boroid + block.zfill(5) + lot.zfill(4)</code><br>
+          → Also queries false certs: <code>currentstatus='CERTIFICATION CLOSEOUT' AND currentstatusdate &gt; 90_days_ago</code>
+        </div>
+      </div>
+    </div>
+    <div class="tool-step">
+      <div class="tool-num">T2</div>
+      <div class="tool-body">
+        <div class="tool-name">get_building_complaints <span class="tool-badge badge-par">parallel with T3</span></div>
+        <div class="tool-desc">HPD Complaints API (ygpa-z7cr). Needs BBL from T1. Returns 12-month complaint trend and category breakdown.</div>
+        <div class="tool-detail">
+          → Trend: if (last_3mo / 3) &gt; (prior_9mo / 9) → trending up<br>
+          → Cache key: <code>complaints:{bbl}</code>
+        </div>
+      </div>
+    </div>
+    <div class="tool-step">
+      <div class="tool-num">T3</div>
+      <div class="tool-body">
+        <div class="tool-name">get_building_owner <span class="tool-badge badge-par">parallel with T2</span></div>
+        <div class="tool-desc">HPD Registration + Contacts. Cross-references Worst Landlord Watchlist using exact match + alias table.</div>
+        <div class="tool-detail">
+          → Registration (tesw-yqqr) → get registrationid<br>
+          → Contacts (feu5-w2e2) → CorporateOwner + IndividualOwner + Agent<br>
+          → Alias table handles LLC variant names (e.g. "A&amp;E" → "A &amp; E REAL ESTATE HOLDINGS LLC")
+        </div>
+      </div>
+    </div>
+    <div class="tool-step">
+      <div class="tool-num">T4</div>
+      <div class="tool-body">
+        <div class="tool-name">get_owner_portfolio <span class="tool-badge badge-instant">instant · local JSON</span></div>
+        <div class="tool-desc">Pre-computed portfolio stats from static JSON. Zero network latency. Runs after T3 returns owner name.</div>
+        <div class="tool-detail">
+          → Portfolio JSON has top 100 watchlist landlords<br>
+          → Run <code>scripts/build_cache.py</code> before hackathon to populate with live data
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     RISK TABLE
+═══════════════════════════════════════════════════════════ -->
+<div class="risks">
+  <div class="section-label">Risk register</div>
+  <div class="risk-table">
+    <div class="risk-row header">
+      <div class="risk-cell">Risk</div>
+      <div class="risk-cell">Mitigation</div>
+    </div>
+    <div class="risk-row">
+      <div class="risk-cell risk-high">Gemini Live WS drops mid-demo</div>
+      <div class="risk-cell">Pre-recorded fallback video. Reconnection logic in server.py. Keep earbuds in for mic quality.</div>
+    </div>
+    <div class="risk-row">
+      <div class="risk-cell risk-high">NYC Open Data API slow or down</div>
+      <div class="risk-cell">Cache-first in every tool. 3s timeout. Demo addresses pre-cached in demo_cache.json. Run build_cache.py day before.</div>
+    </div>
+    <div class="risk-row">
+      <div class="risk-cell risk-med">Address parsing fails for spoken input</div>
+      <div class="risk-cell">normalizer.py handles 90% of cases. KNOWN_ADDRESSES dict covers all 3 demo addresses exactly.</div>
+    </div>
+    <div class="risk-row">
+      <div class="risk-cell risk-med">Gemini hallucinates violation numbers</div>
+      <div class="risk-cell">System prompt: "Only report numbers that your tools return. Never fabricate." Structured JSON tool responses.</div>
+    </div>
+    <div class="risk-row">
+      <div class="risk-cell risk-med">Briefing runs over 45 seconds</div>
+      <div class="risk-cell">Time it in hour 8. Trim system prompt. Explicit word-count target in prompt (150 words).</div>
+    </div>
+    <div class="risk-row">
+      <div class="risk-cell">Camera misclassifies condition</div>
+      <div class="risk-cell">Use obvious prepared photos. Agent always frames as suggestions ("This looks like it could be...").</div>
+    </div>
+    <div class="risk-row">
+      <div class="risk-cell">Noisy demo room</div>
+      <div class="risk-cell">Presenter uses earbuds with mic. Echo cancellation enabled in getUserMedia config.</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     CUT ORDER
+═══════════════════════════════════════════════════════════ -->
+<div class="cut-order">
+  <div class="section-label">Cut order if behind schedule</div>
+  <div class="cut-list">
+    <div class="cut-item"><span class="cut-num">1st</span>Custom PWA → use <code>adk web</code> as demo UI. Judges will understand.</div>
+    <div class="cut-item"><span class="cut-num">2nd</span>Tool 4 (portfolio) → hardcode Koscal 59 LLC example directly in system prompt.</div>
+    <div class="cut-item"><span class="cut-num">3rd</span>Vision mode → briefing-only demo is still compelling and novel.</div>
+    <div class="cut-item never-cut"><span class="cut-num" style="color:inherit">✕ NEVER</span>The spoken briefing with real HPD data. This is the demo. Everything else is polish.</div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     DEMO SCRIPT
+═══════════════════════════════════════════════════════════ -->
+<div class="demo-script">
+  <div class="section-label">3-minute demo script</div>
+  <div class="script-block">
+    <div class="script-beat">
+      <div class="beat-time"><div class="beat-label">Setup</div>0:00–0:30</div>
+      <div class="beat-content">
+        Open the app on your phone. Set the context: <strong>"HPD inspectors walk into buildings with a clipboard and a single complaint. The landlord has a portfolio management system, lawyers, and shell companies. We gave the inspector an investigator."</strong>
+      </div>
+    </div>
+    <div class="script-beat">
+      <div class="beat-time"><div class="beat-label">Briefing</div>0:30–1:30</div>
+      <div class="beat-content">
+        Tap mic. Speak:<br>
+        <code class="cmd">"Brief me on 1520 Sedgwick Avenue, Bronx."</code>
+        Agent delivers the full briefing. Room hears: 47 violations, heat complaints, Koscal 59 LLC, <strong>number 3 on the Worst Landlord Watchlist, 29 buildings, 2,300 violations.</strong> Let the portfolio reveal land.
+      </div>
+    </div>
+    <div class="script-beat">
+      <div class="beat-time"><div class="beat-label">Contrast</div>1:30–2:00</div>
+      <div class="beat-content">
+        Tap mic. Speak:<br>
+        <code class="cmd">"Brief me on 515 Park Avenue, Manhattan."</code>
+        Agent: <strong>"Zero open violations. Zero complaints in the past year."</strong> Let the silence land. That's the inequality moment. Don't explain it.
+      </div>
+    </div>
+    <div class="script-beat">
+      <div class="beat-time"><div class="beat-label">Vision</div>2:00–2:45</div>
+      <div class="beat-content">
+        Tap camera icon. Point phone at prepared photos on tablet. Agent classifies: <strong>"This looks like it could be a Class C active leak — does that match what you're seeing?"</strong> Inspector confirms. Agent drafts the violation through conversation.
+      </div>
+    </div>
+    <div class="script-beat">
+      <div class="beat-time"><div class="beat-label">Close</div>2:45–3:00</div>
+      <div class="beat-content">
+        <strong>"That took two minutes. Without this, it takes hours — if it happens at all. The landlord has always had this information. Now the inspector does too."</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Task checkbox persistence + progress tracker
+const STORAGE_KEY = 'slw-tasks';
+const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+
+function updateProgress() {
+  const all = document.querySelectorAll('.task');
+  const done = document.querySelectorAll('.task.checked');
+  const pct = all.length ? Math.round((done.length / all.length) * 100) : 0;
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-label').textContent =
+    `${done.length} / ${all.length} tasks complete`;
+}
+
+document.querySelectorAll('.task').forEach(task => {
+  const id = task.dataset.id;
+  if (saved[id]) task.classList.add('checked');
+
+  task.addEventListener('click', () => {
+    task.classList.toggle('checked');
+    const state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    state[id] = task.classList.contains('checked');
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    updateProgress();
+  });
+});
+
+updateProgress();
+</script>
+
+</body>
+</html>

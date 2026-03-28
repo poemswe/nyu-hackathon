@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>SlumlordWatch</title>
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- ============================================================
+     STATE: IDLE
+     ============================================================ -->
+<div id="state-idle" class="state active">
+  <div class="idle-header">
+    <div class="wordmark">
+      <span class="wordmark-slum">SLUM</span><span class="wordmark-lord">LORD</span><span class="wordmark-watch">WATCH</span>
+    </div>
+    <div class="tagline">HPD Field Intelligence</div>
+  </div>
+
+  <div class="idle-center">
+    <button id="mic-button" class="mic-button" aria-label="Tap to speak address">
+      <div class="mic-rings">
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3"></div>
+      </div>
+      <div class="mic-icon">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <rect x="9" y="2" width="10" height="16" rx="5" fill="currentColor"/>
+          <path d="M5 14C5 19.523 9.477 24 14 24C18.523 24 22 19.523 22 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+          <line x1="14" y1="24" x2="14" y2="27" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <line x1="10" y1="27" x2="18" y2="27" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </button>
+    <p class="cta-text">Tap to speak an address</p>
+  </div>
+
+  <div class="idle-footer">
+    <div class="status-dot connected" id="conn-status"></div>
+    <span class="status-label" id="conn-label">Connecting...</span>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     STATE: LISTENING
+     ============================================================ -->
+<div id="state-listening" class="state">
+  <div class="listen-header">
+    <button class="back-btn" id="listen-back">✕</button>
+    <div class="wordmark-sm">SLUMLORDWATCH</div>
+  </div>
+
+  <div class="listen-center">
+    <div class="pulse-orb">
+      <div class="orb-core"></div>
+      <div class="orb-ring r1"></div>
+      <div class="orb-ring r2"></div>
+      <div class="orb-ring r3"></div>
+    </div>
+    <p class="listen-label">Listening…</p>
+  </div>
+
+  <div class="transcript-bar" id="transcript-bar">
+    <span id="transcript-text"></span>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     STATE: BRIEFING
+     ============================================================ -->
+<div id="state-briefing" class="state">
+  <div class="briefing-header">
+    <button class="back-btn" id="briefing-back">✕</button>
+    <div class="wordmark-sm">SLUMLORDWATCH</div>
+    <button class="camera-btn" id="enter-vision" title="Activate vision mode">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <circle cx="11" cy="11" r="4" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M11 2C6 2 2 6 2 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M11 20C16 20 20 16 20 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M2 11C2 16 6 20 11 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M20 11C20 6 16 2 11 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Data overlay cards (populated by tool results) -->
+  <div class="data-cards" id="data-cards">
+    <div class="data-card" id="card-violations" style="display:none">
+      <div class="card-label">OPEN VIOLATIONS</div>
+      <div class="card-value" id="val-violations">—</div>
+      <div class="card-sub">
+        <span class="badge badge-c" id="badge-c">C: —</span>
+        <span class="badge badge-b" id="badge-b">B: —</span>
+        <span class="badge badge-a" id="badge-a">A: —</span>
+      </div>
+    </div>
+    <div class="data-card" id="card-owner" style="display:none">
+      <div class="card-label">REGISTERED OWNER</div>
+      <div class="card-value owner-name" id="val-owner">—</div>
+      <div class="watchlist-badge" id="watchlist-badge" style="display:none">
+        ⚠ WORST LANDLORD WATCHLIST
+      </div>
+    </div>
+    <div class="data-card" id="card-complaints" style="display:none">
+      <div class="card-label">COMPLAINTS (12 MO)</div>
+      <div class="card-value" id="val-complaints">—</div>
+      <div class="trend-indicator" id="trend-indicator"></div>
+    </div>
+    <div class="data-card" id="card-portfolio" style="display:none">
+      <div class="card-label">PORTFOLIO</div>
+      <div class="card-value" id="val-portfolio">—</div>
+      <div class="card-sub" id="val-portfolio-sub"></div>
+    </div>
+  </div>
+
+  <!-- Agent speaking indicator -->
+  <div class="agent-speaking" id="agent-speaking">
+    <div class="speaking-bars">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar"></div><div class="bar"></div>
+    </div>
+    <span class="speaking-label">Briefing…</span>
+  </div>
+
+  <!-- Scrolling transcript -->
+  <div class="briefing-transcript" id="briefing-transcript"></div>
+</div>
+
+
+<!-- ============================================================
+     STATE: VISION
+     ============================================================ -->
+<div id="state-vision" class="state">
+  <video id="camera-feed" autoplay playsinline muted></video>
+  <canvas id="capture-canvas" style="display:none"></canvas>
+
+  <div class="vision-overlay">
+    <div class="vision-header">
+      <button class="back-btn light" id="vision-back">✕</button>
+      <div class="wordmark-sm light">SLUMLORDWATCH</div>
+      <div class="violation-count-badge" id="violation-count">
+        <span id="vcount-num">0</span> drafted
+      </div>
+    </div>
+
+    <!-- "Analyzing" pulsing badge -->
+    <div class="analyzing-badge" id="analyzing-badge">
+      <div class="analyzing-dot"></div>
+      <span>Analyzing…</span>
+    </div>
+
+    <!-- Agent transcript overlay -->
+    <div class="vision-transcript-bar" id="vision-transcript-bar">
+      <span id="vision-transcript-text"></span>
+    </div>
+  </div>
+</div>
+
+
+<script src="/static/app.js"></script>
+</body>
+</html>

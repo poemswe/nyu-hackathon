@@ -1,0 +1,72 @@
+[
+  {
+    "rank": 1,
+    "name": "A & E REAL ESTATE HOLDINGS LLC",
+    "year": 2025,
+    "buildings": 43,
+    "violations": 3100
+  },
+  {
+    "rank": 2,
+    "name": "PINNACLE GROUP NYC LLC",
+    "year": 2025,
+    "buildings": 38,
+    "violations": 2800
+  },
+  {
+    "rank": 3,
+    "name": "KOSCAL 59 LLC",
+    "year": 2025,
+    "buildings": 29,
+    "violations": 2300
+  },
+  {
+    "rank": 4,
+    "name": "MOSHE PILLER",
+    "year": 2025,
+    "buildings": 34,
+    "violations": 2100
+  },
+  {
+    "rank": 5,
+    "name": "JOEL WEINER",
+    "year": 2025,
+    "buildings": 22,
+    "violations": 1900
+  },
+  {
+    "rank": 6,
+    "name": "STEVEN KESSNER",
+    "year": 2025,
+    "buildings": 19,
+    "violations": 1750
+  },
+  {
+    "rank": 7,
+    "name": "MEIR MIZRAHI",
+    "year": 2025,
+    "buildings": 17,
+    "violations": 1600
+  },
+  {
+    "rank": 8,
+    "name": "BEDFORD MYRTLE HDFC",
+    "year": 2025,
+    "buildings": 12,
+    "violations": 1400
+  },
+  {
+    "rank": 9,
+    "name": "NACHMAN BRACH",
+    "year": 2025,
+    "buildings": 25,
+    "violations": 1350
+  },
+  {
+    "rank": 10,
+    "name": "JASON GREEN",
+    "year": 2025,
+    "buildings": 15,
+    "violations": 1200
+  }
+]

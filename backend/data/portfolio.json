@@ -1,0 +1,92 @@
+{
+  "A & E REAL ESTATE HOLDINGS LLC": {
+    "total_buildings": 43,
+    "total_open_violations": 3100,
+    "worst_buildings": [
+      { "address": "333 E 181st St, Bronx", "open_violations": 112 },
+      { "address": "1985 Bathgate Ave, Bronx", "open_violations": 98 },
+      { "address": "2064 Prospect Ave, Bronx", "open_violations": 87 }
+    ]
+  },
+  "PINNACLE GROUP NYC LLC": {
+    "total_buildings": 38,
+    "total_open_violations": 2800,
+    "worst_buildings": [
+      { "address": "101 W 190th St, Bronx", "open_violations": 105 },
+      { "address": "1500 Sedgwick Ave, Bronx", "open_violations": 91 },
+      { "address": "2186 Cruger Ave, Bronx", "open_violations": 78 }
+    ]
+  },
+  "KOSCAL 59 LLC": {
+    "total_buildings": 29,
+    "total_open_violations": 2300,
+    "worst_buildings": [
+      { "address": "1520 Sedgwick Ave, Bronx", "open_violations": 47 },
+      { "address": "1601 Macombs Rd, Bronx", "open_violations": 41 },
+      { "address": "1755 University Ave, Bronx", "open_violations": 38 }
+    ]
+  },
+  "MOSHE PILLER": {
+    "total_buildings": 34,
+    "total_open_violations": 2100,
+    "worst_buildings": [
+      { "address": "510 E 165th St, Bronx", "open_violations": 89 },
+      { "address": "595 E 163rd St, Bronx", "open_violations": 76 },
+      { "address": "611 E 169th St, Bronx", "open_violations": 64 }
+    ]
+  },
+  "JOEL WEINER": {
+    "total_buildings": 22,
+    "total_open_violations": 1900,
+    "worst_buildings": [
+      { "address": "240 E 175th St, Bronx", "open_violations": 95 },
+      { "address": "2101 Grand Ave, Bronx", "open_violations": 82 },
+      { "address": "1930 Andrews Ave, Bronx", "open_violations": 71 }
+    ]
+  },
+  "STEVEN KESSNER": {
+    "total_buildings": 19,
+    "total_open_violations": 1750,
+    "worst_buildings": [
+      { "address": "1640 Grand Concourse, Bronx", "open_violations": 102 },
+      { "address": "2180 Tiebout Ave, Bronx", "open_violations": 88 },
+      { "address": "2355 University Ave, Bronx", "open_violations": 73 }
+    ]
+  },
+  "MEIR MIZRAHI": {
+    "total_buildings": 17,
+    "total_open_violations": 1600,
+    "worst_buildings": [
+      { "address": "1435 Ogden Ave, Bronx", "open_violations": 91 },
+      { "address": "1185 Grand Concourse, Bronx", "open_violations": 79 },
+      { "address": "1550 Wythe Pl, Bronx", "open_violations": 65 }
+    ]
+  },
+  "BEDFORD MYRTLE HDFC": {
+    "total_buildings": 12,
+    "total_open_violations": 1400,
+    "worst_buildings": [
+      { "address": "447 Bedford Ave, Brooklyn", "open_violations": 134 },
+      { "address": "105 Myrtle Ave, Brooklyn", "open_violations": 112 },
+      { "address": "325 Nostrand Ave, Brooklyn", "open_violations": 98 }
+    ]
+  },
+  "NACHMAN BRACH": {
+    "total_buildings": 25,
+    "total_open_violations": 1350,
+    "worst_buildings": [
+      { "address": "1880 Loring Pl, Bronx", "open_violations": 67 },
+      { "address": "2155 Morris Ave, Bronx", "open_violations": 58 },
+      { "address": "1960 Walton Ave, Bronx", "open_violations": 52 }
+    ]
+  },
+  "JASON GREEN": {
+    "total_buildings": 15,
+    "total_open_violations": 1200,
+    "worst_buildings": [
+      { "address": "561 W 163rd St, Manhattan", "open_violations": 88 },
+      { "address": "603 W 174th St, Manhattan", "open_violations": 76 },
+      { "address": "4280 Broadway, Manhattan", "open_violations": 61 }
+    ]
+  }
+}
