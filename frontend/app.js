@@ -225,6 +225,7 @@ let transcriptBuffer = '';
 let speakingTimeout = null;
 let violationCount = 0;
 let visionDraftLines = [];
+let visionLiveText = '';
 let lastVisionTranscript = '';
 let lastBriefingTranscript = '';
 let briefingTurnLocked = false;
@@ -259,13 +260,7 @@ function handleTranscript(text, role) {
   } else if (currentState === 'vision') {
     if (role === 'model') {
       document.getElementById('vision-transcript-text').textContent = text;
-      const visionClean = normalizeTranscriptText(text);
-      if (visionClean && visionClean !== lastVisionTranscript) {
-        visionDraftLines.push(visionClean);
-        lastVisionTranscript = visionClean;
-        violationCount = visionDraftLines.length;
-        document.getElementById('vcount-num').textContent = violationCount;
-      }
+      appendVisionDraft(normalizeTranscriptText(text));
     }
   }
 
@@ -310,6 +305,33 @@ function finalizeBriefingTranscript() {
   briefingLiveEl = null;
   briefingLiveText = '';
   lastProgressSpoken = '';
+}
+
+function appendVisionDraft(text) {
+  if (!text || text === lastVisionTranscript) return;
+  lastVisionTranscript = text;
+
+  if (!visionLiveText) {
+    visionLiveText = text;
+  } else if (text.startsWith(visionLiveText)) {
+    visionLiveText = text;
+  } else if (visionLiveText.startsWith(text)) {
+    return;
+  } else {
+    visionDraftLines.push(visionLiveText);
+    visionLiveText = text;
+  }
+  const count = visionDraftLines.length + (visionLiveText ? 1 : 0);
+  document.getElementById('vcount-num').textContent = count;
+  violationCount = count;
+}
+
+function finalizeVisionDraft() {
+  if (visionLiveText) {
+    visionDraftLines.push(visionLiveText);
+    visionLiveText = '';
+  }
+  lastVisionTranscript = '';
 }
 
 // Heuristic extractor — populates data cards from agent speech
@@ -708,11 +730,15 @@ document.addEventListener('DOMContentLoaded', () => {
     setState('idle');
   });
   document.getElementById('vision-back').addEventListener('click', () => {
+    finalizeVisionDraft();
     renderDraftPanel();
     setState('briefing');
   });
 
   async function enterVisionMode() {
+    visionDraftLines = [];
+    visionLiveText = '';
+    lastVisionTranscript = '';
     violationCount = 0;
     document.getElementById('vcount-num').textContent = '0';
     document.getElementById('vision-transcript-text').textContent = '';
