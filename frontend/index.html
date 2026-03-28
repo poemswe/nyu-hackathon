@@ -6,7 +6,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>SlumlordWatch</title>
-  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/static/favicon.svg?v=2" type="image/svg+xml">
+  <link rel="shortcut icon" href="/static/favicon.svg?v=2" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/favicon.svg?v=2">
   <link rel="manifest" href="/static/manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -83,7 +85,7 @@
   <div class="briefing-header">
     <button class="back-btn" id="briefing-back">✕</button>
     <div class="wordmark-sm">SLUMLORDWATCH</div>
-    <button class="camera-btn" id="enter-vision" title="Activate vision mode">
+    <button class="camera-btn" id="enter-vision" title="Activate vision mode" aria-label="Start visual inspection">
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
         <circle cx="11" cy="11" r="4" stroke="currentColor" stroke-width="1.5"/>
         <path d="M11 2C6 2 2 6 2 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -91,6 +93,7 @@
         <path d="M2 11C2 16 6 20 11 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         <path d="M20 11C20 6 16 2 11 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
+      <span>VISION</span>
     </button>
   </div>
 
@@ -135,6 +138,9 @@
 
   <!-- Scrolling transcript -->
   <div class="briefing-transcript" id="briefing-transcript"></div>
+  <div class="briefing-cta-wrap" id="briefing-cta-wrap" style="display:none">
+    <button class="briefing-cta-btn" id="briefing-cta-vision">Start Visual Inspection</button>
+  </div>
 </div>
 
 

@@ -14,8 +14,7 @@
 
 const WS_URL = (() => {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  const host = location.hostname === 'localhost' ? 'localhost:8080' : location.host;
-  return `${proto}://${host}/ws`;
+  return `${proto}://${location.host}/ws`;
 })();
 
 const FRAME_INTERVAL_MS = 1000;  // 1 FPS for vision mode
@@ -49,8 +48,13 @@ function setState(name) {
 let ws = null;
 let wsReady = false;
 let reconnectDelay = 1000;
+let reconnectTimer = null;
+let shouldReconnect = true;
 
 function connectWS() {
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
   setConnStatus('connecting', 'Connecting…');
 
   ws = new WebSocket(WS_URL);
@@ -63,6 +67,14 @@ function connectWS() {
   ws.onmessage = (evt) => {
     if (evt.data instanceof ArrayBuffer) {
       // Binary = PCM audio from Gemini
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      if (currentState === 'listening' && !briefingTurnLocked) {
+        briefingTurnLocked = true;
+        stopMic();
+        setState('briefing');
+      }
       playAudio(evt.data);
       showSpeaking(true);
     } else {
@@ -81,9 +93,11 @@ function connectWS() {
       setConnStatus('error', 'Session ended');
       return;
     }
+    if (!shouldReconnect) return;
     setConnStatus('error', 'Disconnected');
     reconnectDelay = Math.min((reconnectDelay || 1000) * 2, 15000);
-    setTimeout(connectWS, reconnectDelay);
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(connectWS, reconnectDelay);
   };
 
   ws.onerror = (e) => {
@@ -100,6 +114,11 @@ function sendBinary(typeTag, payload) {
   ws.send(buf.buffer);
 }
 
+function sendControl(msg) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify(msg));
+}
+
 function handleServerMessage(msg) {
   switch (msg.type) {
     case 'ready':
@@ -110,6 +129,10 @@ function handleServerMessage(msg) {
 
     case 'transcript':
       handleTranscript(msg.text, msg.role);
+      break;
+
+    case 'progress':
+      handleProgress(msg.text);
       break;
 
     case 'tool_result':
@@ -126,11 +149,61 @@ function handleServerMessage(msg) {
       ws.send(JSON.stringify({ type: 'pong' }));
       break;
 
+    case 'turn_complete':
+      finalizeBriefingTranscript();
+      showSpeaking(false);
+      agentSpeaking = false;
+      briefingTurnLocked = false;
+      if (currentState === 'briefing') {
+        const ctaWrap = document.getElementById('briefing-cta-wrap');
+        if (ctaWrap) ctaWrap.style.display = 'block';
+      }
+      break;
+
     case 'error':
       console.error('Server error:', msg.message);
       setConnStatus('error', 'Error');
       break;
   }
+}
+
+function normalizeTranscriptText(text) {
+  return (text || '').replace(/\s+/g, ' ').trim();
+}
+
+function handleProgress(text) {
+  const clean = normalizeTranscriptText(text);
+  if (!clean) return;
+  if (currentState === 'listening') {
+    briefingTurnLocked = true;
+    stopMic();
+    setState('briefing');
+  }
+  appendStatusLine(clean);
+  speakProgress(clean);
+}
+
+function appendStatusLine(text) {
+  const el = document.getElementById('briefing-transcript');
+  finalizeBriefingTranscript();
+  const p = document.createElement('p');
+  p.className = 'status-line';
+  p.textContent = text;
+  el.appendChild(p);
+  el.scrollTop = el.scrollHeight;
+}
+
+function speakProgress(text) {
+  if (!progressSpeechEnabled) return;
+  if (!('speechSynthesis' in window)) return;
+  if (!text || text === lastProgressSpoken) return;
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 1.0;
+  utter.pitch = 1.0;
+  utter.volume = 1.0;
+  lastProgressSpoken = text;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utter);
 }
 
 // ---------------------------------------------------------------------------
@@ -152,23 +225,31 @@ let transcriptBuffer = '';
 let speakingTimeout = null;
 let violationCount = 0;
 let lastBriefingTranscript = '';
+let briefingTurnLocked = false;
+let briefingLiveText = '';
+let briefingLiveEl = null;
+let progressSpeechEnabled = true;
+let lastProgressSpoken = '';
 
 function handleTranscript(text, role) {
   if (!text) return;
+  const clean = normalizeTranscriptText(text);
 
-  // Auto-advance to briefing state when agent starts speaking
-  if (role === 'model' && currentState === 'listening') {
-    setState('briefing');
-  }
-
-  // Update appropriate transcript element based on state
   if (currentState === 'listening') {
     if (role === 'user') {
-      document.getElementById('transcript-text').textContent = text;
+      document.getElementById('transcript-text').textContent = clean;
+    } else if (role === 'model') {
+      const asking = /address|try again|which building|what building|could you repeat/i.test(clean);
+      if (asking) {
+        stopMic();
+        setState('idle');
+        const cta = document.querySelector('.cta-text');
+        if (cta) cta.textContent = "Didn't catch that. Tap to try again.";
+      }
     }
   } else if (currentState === 'briefing') {
     if (role === 'model') {
-      appendBriefingTranscript(text);
+      appendBriefingTranscript(clean);
       showSpeaking(true);
       clearTimeout(speakingTimeout);
       speakingTimeout = setTimeout(() => showSpeaking(false), 2500);
@@ -185,31 +266,46 @@ function handleTranscript(text, role) {
   }
 
   // Parse structured data from transcript text
-  extractDataFromTranscript(text);
+  extractDataFromTranscript(clean);
 }
 
 function appendBriefingTranscript(text) {
   const el = document.getElementById('briefing-transcript');
-  // Ignore exact duplicate transcript events.
-  if (text === lastBriefingTranscript) return;
+  const clean = normalizeTranscriptText(text);
+  if (!clean) return;
+  if (clean === lastBriefingTranscript) return;
 
-  // Many live transcript streams are cumulative (new text starts with old text).
-  // Replace the last paragraph instead of appending a duplicate block.
-  if (lastBriefingTranscript && text.startsWith(lastBriefingTranscript) && el.lastElementChild) {
-    el.lastElementChild.textContent = text;
-    el.lastElementChild.innerHTML = el.lastElementChild.innerHTML.replace(
-      /\b(\d+)\b/g,
-      '<span class="highlight">$1</span>'
-    );
-  } else {
-    const p = document.createElement('p');
-    p.textContent = text;
-    p.innerHTML = p.innerHTML.replace(/\b(\d+)\b/g, '<span class="highlight">$1</span>');
-    el.appendChild(p);
+  if (!briefingLiveEl) {
+    briefingLiveEl = document.createElement('p');
+    el.appendChild(briefingLiveEl);
   }
 
-  lastBriefingTranscript = text;
+  // Handle two transcript styles:
+  // 1) cumulative: each chunk contains the full text so far
+  // 2) incremental: each chunk is a word/phrase token
+  if (!briefingLiveText) {
+    briefingLiveText = clean;
+  } else if (clean.startsWith(briefingLiveText)) {
+    // Cumulative update: replace with fuller version.
+    briefingLiveText = clean;
+  } else if (briefingLiveText.startsWith(clean)) {
+    // Older/shorter duplicate chunk: ignore.
+  } else {
+    // Incremental token: append to current paragraph.
+    const joiner = /^[,.;:!?)]/.test(clean) ? '' : ' ';
+    briefingLiveText = `${briefingLiveText}${joiner}${clean}`.trim();
+  }
+
+  briefingLiveEl.textContent = briefingLiveText;
+
+  lastBriefingTranscript = clean;
   el.scrollTop = el.scrollHeight;
+}
+
+function finalizeBriefingTranscript() {
+  briefingLiveEl = null;
+  briefingLiveText = '';
+  lastProgressSpoken = '';
 }
 
 // Heuristic extractor — populates data cards from agent speech
@@ -270,7 +366,9 @@ function extractDataFromTranscript(text) {
 
   // Portfolio
   const portMatch = text.match(/(\d+)\s+(?:other\s+)?buildings/i);
-  const portViolMatch = text.match(/([\d,]+)\s+(?:combined\s+|total\s+)?(?:open\s+)?violations/i);
+  const portViolMatch =
+    text.match(/(?:with|across)\s+([\d,]+)\s+(?:open\s+)?violations(?:\s+across\s+\d+\s+buildings)?/i) ||
+    text.match(/([\d,]+)\s+(?:combined\s+)?(?:open\s+)?violations\s+across\s+\d+\s+buildings/i);
   if (portMatch) {
     revealCard('card-portfolio');
     document.getElementById('val-portfolio').textContent = `${portMatch[1]} buildings`;
@@ -372,7 +470,7 @@ async function startMic(options = {}) {
     scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
 
     scriptProcessor.onaudioprocess = (e) => {
-      if (!wsReady || agentSpeaking) return;
+      if (!wsReady || agentSpeaking || briefingTurnLocked) return;
       const float32 = e.inputBuffer.getChannelData(0);
       const int16 = float32ToInt16(float32);
       sendBinary(MSG_TYPE_AUDIO, int16.buffer);
@@ -422,18 +520,44 @@ function float32ToInt16(float32Array) {
 // ---------------------------------------------------------------------------
 
 let playbackContext = null;
+let playbackUnlocked = false;
 const audioQueue = [];
 let isPlaying = false;
 let agentSpeaking = false;
+let nextPlayTime = 0;
 
-function playAudio(arrayBuffer) {
+async function unlockPlaybackAudio() {
   if (!playbackContext) {
     playbackContext = new (window.AudioContext || window.webkitAudioContext)({
       sampleRate: AUDIO_OUTPUT_RATE
     });
   }
+  if (playbackContext.state === 'suspended') {
+    await playbackContext.resume();
+  }
+  if (playbackContext.state === 'running' && !playbackUnlocked) {
+    const silent = playbackContext.createBuffer(1, 1, AUDIO_OUTPUT_RATE);
+    const src = playbackContext.createBufferSource();
+    src.buffer = silent;
+    src.connect(playbackContext.destination);
+    src.start();
+    playbackUnlocked = true;
+  }
+  if (playbackContext.state === 'running' && audioQueue.length && !isPlaying) {
+    drainAudioQueue();
+  }
+}
+
+function playAudio(arrayBuffer) {
   agentSpeaking = true;
   audioQueue.push(arrayBuffer);
+  if (!playbackContext) return;
+  if (playbackContext.state === 'suspended') {
+    playbackContext.resume().then(() => {
+      if (!isPlaying) drainAudioQueue();
+    }).catch(() => {});
+    return;
+  }
   if (!isPlaying) drainAudioQueue();
 }
 
@@ -441,12 +565,16 @@ function drainAudioQueue() {
   if (!audioQueue.length) {
     isPlaying = false;
     agentSpeaking = false;
+    nextPlayTime = 0;
+    return;
+  }
+  if (!playbackContext || playbackContext.state !== 'running') {
+    isPlaying = false;
     return;
   }
   isPlaying = true;
   const buf = audioQueue.shift();
 
-  // PCM int16 → float32
   const int16 = new Int16Array(buf);
   const float32 = new Float32Array(int16.length);
   for (let i = 0; i < int16.length; i++) {
@@ -460,7 +588,11 @@ function drainAudioQueue() {
   source.buffer = audioBuf;
   source.connect(playbackContext.destination);
   source.onended = drainAudioQueue;
-  source.start();
+
+  const now = playbackContext.currentTime;
+  if (nextPlayTime < now) nextPlayTime = now;
+  source.start(nextPlayTime);
+  nextPlayTime += audioBuf.duration;
 }
 
 // ---------------------------------------------------------------------------
@@ -533,16 +665,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // Connect WebSocket immediately
   connectWS();
 
+  // Mobile autoplay policy workaround: unlock once on first user gesture.
+  const unlockOnce = async () => {
+    await unlockPlaybackAudio();
+    window.removeEventListener('touchstart', unlockOnce);
+    window.removeEventListener('pointerdown', unlockOnce);
+  };
+  window.addEventListener('touchstart', unlockOnce, { passive: true });
+  window.addEventListener('pointerdown', unlockOnce, { passive: true });
+
   // Mic button (idle state)
-  document.getElementById('mic-button').addEventListener('click', () => {
+  document.getElementById('mic-button').addEventListener('click', async () => {
     if (!wsReady) {
       alert('Not connected yet. Please wait a moment.');
       return;
     }
-    // Reset briefing state
+    await unlockPlaybackAudio();
     resetBriefing();
+    const cta = document.querySelector('.cta-text');
+    if (cta) cta.textContent = 'Tap to speak an address';
+    sendControl({ type: 'start_turn', mode: 'briefing' });
     startMic();
-    setState('listening');
   });
 
   // Back buttons
@@ -553,15 +696,34 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('vision-back').addEventListener('click', () => setState('briefing'));
 
-  // Enter vision mode from briefing
-  document.getElementById('enter-vision').addEventListener('click', () => {
+  async function enterVisionMode() {
     violationCount = 0;
     document.getElementById('vcount-num').textContent = '0';
     document.getElementById('vision-transcript-text').textContent = '';
+    const ctaWrap = document.getElementById('briefing-cta-wrap');
+    if (ctaWrap) ctaWrap.style.display = 'none';
+    sendControl({ type: 'start_turn', mode: 'vision' });
+    await unlockPlaybackAudio();
     setState('vision');
     // Keep mic running in vision mode
     if (!micStream) startMic({ setListeningState: false }).catch(() => {});
+  }
+
+  // Enter vision mode from briefing
+  document.getElementById('enter-vision').addEventListener('click', () => {
+    enterVisionMode().catch(() => {});
   });
+  document.getElementById('briefing-cta-vision').addEventListener('click', () => {
+    enterVisionMode().catch(() => {});
+  });
+});
+
+window.addEventListener('beforeunload', () => {
+  shouldReconnect = false;
+  clearTimeout(reconnectTimer);
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+    ws.close(1000, 'page unload');
+  }
 });
 
 function resetBriefing() {
@@ -584,5 +746,14 @@ function resetBriefing() {
   document.getElementById('trend-indicator').className = 'trend-indicator';
   document.getElementById('briefing-transcript').innerHTML = '';
   lastBriefingTranscript = '';
+  briefingTurnLocked = false;
+  briefingLiveText = '';
+  briefingLiveEl = null;
+  lastProgressSpoken = '';
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+  const ctaWrap = document.getElementById('briefing-cta-wrap');
+  if (ctaWrap) ctaWrap.style.display = 'none';
   showSpeaking(false);
 }

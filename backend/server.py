@@ -17,9 +17,12 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+import re
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+
+BRIEFING_END_RE = re.compile(r"ready(?:\s+when\s+you\s+are|\s+for)?\s+for\s+the\s+visual\s+inspection\.?", re.IGNORECASE)
 
 app = FastAPI(title="SlumlordWatch API")
 
@@ -90,12 +93,16 @@ async def websocket_endpoint(websocket: WebSocket):
 
         agent_speaking = False
         cooldown_until = 0.0
-
+        briefing_delivered = False
+        last_output_transcript = ""
+        turn_mode = "briefing"
+        completed_model_turns = 0
+        model_output_seen_in_turn = False
         await websocket.send_json({"type": "ready"})
         logger.info(f"Session {session_id} started")
 
         async def receive_from_browser():
-            nonlocal agent_speaking, cooldown_until
+            nonlocal agent_speaking, cooldown_until, briefing_delivered, last_output_transcript, turn_mode, completed_model_turns, model_output_seen_in_turn
             try:
                 while True:
                     try:
@@ -111,6 +118,9 @@ async def websocket_endpoint(websocket: WebSocket):
                             payload = raw[1:]
                             if msg_type == 0x01:
                                 import time
+                                # In briefing mode, allow only one completed model response per explicit start_turn.
+                                if turn_mode == "briefing" and briefing_delivered:
+                                    continue
                                 if agent_speaking or time.time() < cooldown_until:
                                     continue
                                 live_request_queue.send_realtime(
@@ -126,6 +136,17 @@ async def websocket_endpoint(websocket: WebSocket):
                             msg = json.loads(data["text"])
                             if msg.get("type") == "pong":
                                 pass
+                            elif msg.get("type") == "start_turn":
+                                briefing_delivered = False
+                                last_output_transcript = ""
+                                turn_mode = msg.get("mode", "briefing")
+                                completed_model_turns = 0
+                                model_output_seen_in_turn = False
+                                if turn_mode == "briefing":
+                                    await websocket.send_json({
+                                        "type": "progress",
+                                        "text": "Listening for address..."
+                                    })
                         except json.JSONDecodeError:
                             pass
 
@@ -135,7 +156,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 live_request_queue.close()
 
         async def send_to_browser():
-            nonlocal agent_speaking, cooldown_until
+            nonlocal agent_speaking, cooldown_until, briefing_delivered, last_output_transcript, completed_model_turns, model_output_seen_in_turn
             try:
                 async for event in runner.run_live(
                     user_id="inspector",
@@ -146,13 +167,22 @@ async def websocket_endpoint(websocket: WebSocket):
                     if event.content and event.content.parts:
                         for part in event.content.parts:
                             if part.inline_data and "audio" in (part.inline_data.mime_type or ""):
-                                agent_speaking = True
-                                await websocket.send_bytes(part.inline_data.data)
+                                if turn_mode == "briefing" and completed_model_turns >= 1:
+                                    continue
+                                if not briefing_delivered:
+                                    agent_speaking = True
+                                    model_output_seen_in_turn = True
+                                    await websocket.send_bytes(part.inline_data.data)
 
                     if event.turn_complete:
                         import time
+                        if turn_mode == "briefing" and model_output_seen_in_turn:
+                            completed_model_turns += 1
+                            briefing_delivered = True
+                            model_output_seen_in_turn = False
                         agent_speaking = False
                         cooldown_until = time.time() + 2.0
+                        await websocket.send_json({"type": "turn_complete"})
 
                     if event.input_transcription and event.input_transcription.text:
                         await websocket.send_json({
@@ -161,11 +191,23 @@ async def websocket_endpoint(websocket: WebSocket):
                             "role": "user",
                         })
                     if event.output_transcription and event.output_transcription.text:
-                        await websocket.send_json({
-                            "type": "transcript",
-                            "text": event.output_transcription.text,
-                            "role": "model",
-                        })
+                        output_text = event.output_transcription.text
+                        if turn_mode == "briefing" and completed_model_turns >= 1:
+                            continue
+                        if (
+                            not briefing_delivered
+                            and output_text != last_output_transcript
+                        ):
+                            model_output_seen_in_turn = True
+                            await websocket.send_json({
+                                "type": "transcript",
+                                "text": output_text,
+                                "role": "model",
+                            })
+                            last_output_transcript = output_text
+                            if turn_mode == "briefing" and BRIEFING_END_RE.search(output_text):
+                                briefing_delivered = True
+                                completed_model_turns = 1
             except WebSocketDisconnect:
                 pass
             except Exception as e:
