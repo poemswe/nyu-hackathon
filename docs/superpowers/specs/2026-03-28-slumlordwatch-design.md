@@ -22,7 +22,7 @@ NYC HPD housing inspector performing field visits. Secondary user (future): tena
 
 ### Moment 1: The Briefing
 
-Inspector speaks an address while walking to the building. Agent calls four tools in sequence, synthesizes results, and speaks a structured brief:
+Inspector speaks an address while walking to the building. Agent calls tools in a dependency-aware sequence (Tool 1 first, then Tools 2+3 in parallel, then Tool 4 if available), synthesizes results, and speaks a structured brief:
 
 1. Open violation count by class (A/B/C) with descriptions
 2. Complaint history — top categories, trend, recency
@@ -37,14 +37,14 @@ Target duration: under 45 seconds spoken (~150 words).
 
 Inspector activates camera. Gemini Live receives frames at 1 FPS. Agent identifies visible conditions, proposes violation classifications:
 
-- Water damage / active leak → Class C
-- Mold / mildew → Class B
-- Peeling paint (pre-1978 building) → Class C (lead risk)
-- Cracked plaster / walls → Class B
-- Pest evidence → Class B
-- Broken window / door → Class B
+- Water damage / active leak → suggested Class C
+- Mold / mildew → suggested Class B
+- Peeling paint → suggested Class C if building is pre-1978 (agent checks `yearbuilt` from PLUTO or asks inspector), otherwise Class B
+- Cracked plaster / walls → suggested Class B
+- Pest evidence → suggested Class B
+- Broken window / door → suggested Class B
 
-Agent drafts violation narrative through voice conversation. Inspector confirms, edits, or adds observations. Agent reads back the complete draft on request.
+All vision-based classifications are suggestions requiring inspector confirmation. The agent explicitly frames them as proposed: "This looks like it could be a Class C active leak — does that match what you're seeing?" Agent drafts violation narrative through voice conversation. Inspector confirms, edits, or adds observations. Agent reads back the complete draft on request.
 
 ## Architecture
 
@@ -69,7 +69,7 @@ Browser (Mobile PWA)          Python Backend (Cloud Run)        Google Cloud
 - **Server-to-server** WebSocket pattern. API key stays server-side. ADK handles tool execution automatically.
 - **Cloud Run** for the backend. Cloud Functions cannot hold WebSocket connections for the duration of a Live API session (up to 10 minutes).
 - **PWA on Firebase Hosting.** Judges open a URL on their phone. No install.
-- **No database.** No Firestore, no auth, no user accounts. Stateless — the agent assembles everything fresh per address.
+- **No database.** No Firestore, no auth, no user accounts. Stateless — the agent assembles everything fresh per address. Demo reliability comes from local JSON files checked into the repo (watchlist, portfolio stats, cached API responses for demo addresses), not from a database or external cache.
 - **ADK over raw Gemini API.** ADK auto-executes tools during streaming sessions and handles reconnection. Raw Live API requires manual tool response handling.
 - **Start with `adk web`** for development. Build custom frontend only if time permits.
 
@@ -83,41 +83,53 @@ Voice: Kore
 
 ### System prompt
 
-> You are a field intelligence agent for NYC housing inspectors. When given a building address, assemble a spoken briefing by calling your tools in sequence. Be direct, cite numbers, flag red flags. After the briefing, analyze building conditions through the camera and draft violation narratives. Never fabricate violation data — only report what the tools return.
+> You are a field intelligence agent for NYC housing inspectors. When given a building address, assemble a spoken briefing by calling your tools. Be direct, cite numbers, flag red flags. After the briefing, analyze building conditions through the camera and propose violation classifications — always frame visual assessments as suggestions requiring inspector confirmation ("This looks like it could be..."). For tool-sourced data (violations, complaints, ownership), report exactly what the tools return. Never fabricate numbers or violation records.
 
 ### Tool 1: get_building_violations
 
 - **Input:** address (street number + street name), borough
 - **API:** HPD Violations `https://data.cityofnewyork.us/resource/wvxf-dwi5.json`
 - **Query:** `?housenumber={num}&streetname={street}&boro={borough}&violationstatus=Open`
-- **Returns:** Count by class (A/B/C), open violations with descriptions and dates, violations certified as corrected in last 90 days (false cert candidates). Also extracts `registrationid` and `bbl` for downstream tools.
+- **Returns:** Count by class (A/B/C), open violations with descriptions and dates. Also extracts `registrationid` and constructs BBL for downstream tools.
+- **BBL construction:** The violations dataset has separate `boroid`, `block`, `lot` fields — no `bbl` field. Construct as: `bbl = f"{boroid}{block.zfill(5)}{lot.zfill(4)}"` (1-digit borough + 5-digit block + 4-digit lot = 10-digit string).
+- **False cert query:** Separate query for recently certified violations: `$where=currentstatus='CERTIFICATION CLOSEOUT' AND currentstatusdate > '{90_days_ago}'`. This catches violations the landlord claims were fixed.
 
 ### Tool 2: get_building_complaints
 
-- **Input:** BBL (from Tool 1)
+- **Input:** BBL (constructed by Tool 1)
+- **Depends on:** Tool 1 (needs BBL)
 - **API:** HPD Complaints `https://data.cityofnewyork.us/resource/ygpa-z7cr.json`
 - **Query:** `?bbl={bbl}&$where=received_date > '{12_months_ago}'`
 - **Returns:** Total complaints last 12 months, breakdown by `major_category`, 3-month vs 12-month trend, most recent complaints.
 
 ### Tool 3: get_building_owner
 
-- **Input:** registrationid (from Tool 1) or address
+- **Input:** address (street number + street name, borough) — does NOT depend on Tool 1
 - **APIs:**
   - Registration: `https://data.cityofnewyork.us/resource/tesw-yqqr.json`
   - Contacts: `https://data.cityofnewyork.us/resource/feu5-w2e2.json`
-- **Query:** Get registrationid from Registration by address, then query Contacts for `type=CorporateOwner` and `type=IndividualOwner`
-- **Returns:** Owner name, corporate name, managing agent. Cross-references against Worst Landlord Watchlist (static JSON loaded at startup). Returns watchlist rank if matched.
+- **Query:** Query Registration by `housenumber` + `streetname` + `boroid` to get `registrationid`. Then two queries on Contacts: one for `type=CorporateOwner` (uses `corporationname` field), one for `type=IndividualOwner` (uses `firstname` + `lastname` fields). Or combine: `$where=type in('CorporateOwner','IndividualOwner')`.
+- **Returns:** Owner name, corporate name, managing agent. Cross-references against Worst Landlord Watchlist using exact-match plus a curated alias table (e.g., "A&E REAL ESTATE" → "A & E REAL ESTATE HOLDINGS LLC"). Returns watchlist rank if matched.
 
 ### Tool 4: get_owner_portfolio
 
 - **Input:** Owner name or corporate name (from Tool 3)
-- **API:** Registration Contacts `feu5-w2e2` → HPD Violations `wvxf-dwi5`
-- **Query:** Find all registrationids matching the owner name, then query open violations for each
+- **Implementation:** Pre-computed static JSON checked into repo. Contains portfolio stats for the top 100 Worst Landlord Watchlist landlords: total buildings, total open violations, top 3 worst buildings. Built from a one-time batch query before the hackathon.
 - **Returns:** Total buildings owned, total open violations across portfolio, top 3 worst buildings by violation count.
+- **Why pre-computed:** Live portfolio aggregation requires N+1 API calls (one per building) which breaks the 15-second briefing target. For 3 demo landlords, pre-computed data is reliable and fast. Live aggregation is a post-hackathon feature.
 
 ### Tool orchestration
 
-Tools 1, 2, and 3 can run in parallel (all accept address-derived inputs). Tool 4 depends on Tool 3's output. ADK manages the execution loop and feeds results to Gemini for synthesis.
+```
+Tool 1 (violations — needs address only)
+    ↓ provides BBL
+    ├── Tool 2 (complaints — needs BBL from Tool 1)  ── parallel
+    └── Tool 3 (owner — needs address only)           ── parallel
+              ↓ provides owner name
+              Tool 4 (portfolio — static JSON lookup, optional)
+```
+
+Tool 1 runs first (extracts BBL). Then Tools 2 and 3 run in parallel (Tool 2 uses BBL, Tool 3 uses the original address). Tool 4 runs after Tool 3 returns the owner name — it's a local JSON lookup so it's instant. ADK manages the execution loop and feeds results to Gemini for synthesis.
 
 ## Briefing Format (Example)
 
@@ -157,16 +169,17 @@ No address input field, no navigation, no menu, no settings. HTML + vanilla JS +
 | HPD Complaints | `ygpa-z7cr` | `data.cityofnewyork.us/resource/ygpa-z7cr.json` | BBL |
 | HPD Registration | `tesw-yqqr` | `data.cityofnewyork.us/resource/tesw-yqqr.json` | registrationid |
 | Registration Contacts | `feu5-w2e2` | `data.cityofnewyork.us/resource/feu5-w2e2.json` | registrationid |
-| Worst Landlord Watchlist | static JSON | Pre-loaded from landlordwatchlist.com | Owner name match |
+| Worst Landlord Watchlist | static JSON | Pre-built, checked into repo | Exact match + alias table |
+| Portfolio Stats | static JSON | Pre-computed batch query, checked into repo | Owner name from Watchlist |
 
-BBL (Borough-Block-Lot) is the universal join key. Format varies across datasets — normalize to 10-digit string.
+BBL (Borough-Block-Lot) is the universal join key. Normalize to 10-digit string: `f"{boroid}{block.zfill(5)}{lot.zfill(4)}"`. HPD Violations uses separate fields (no `bbl` column); HPD Complaints has a `bbl` field; PLUTO stores it as a float.
 
 ## Build Plan (10 Hours)
 
 | Hours | Work | Milestone |
 |---|---|---|
-| 1-2 | ADK + FastAPI setup, Gemini Live voice in/out working | Say "hello," hear response |
-| 3-4 | Implement 4 tools, load Watchlist JSON | Speak address, hear full briefing with real data |
+| 1-2 | ADK agent definition + `adk web` voice in/out working (no FastAPI yet) | Say "hello," hear response |
+| 3-4 | Implement 4 tools, load Watchlist + Portfolio JSON, build demo address cache | Speak address, hear full briefing with real data |
 | 5 | Camera streaming + vision classification | Point at photo, agent classifies and drafts violation |
 | 6-7 | PWA frontend (4 states), deploy to Firebase | Full flow works on phone |
 | 8 | End-to-end testing, prompt tuning, cached fallbacks | Reliable demo with 3-4 addresses |
@@ -205,7 +218,7 @@ BBL (Borough-Block-Lot) is the universal join key. Format varies across datasets
 | Risk | Mitigation |
 |---|---|
 | Gemini Live WebSocket drops | Pre-recorded fallback video |
-| NYC Open Data API slow/down | Cached responses for demo addresses (3-second timeout) |
+| NYC Open Data API slow/down | Local JSON cache for demo addresses checked into repo. Tools check cache first, fall back to live API with 3-second timeout. |
 | Gemini hallucinates numbers | System prompt: only report tool data. Structured JSON responses. |
 | Camera misclassifies | Use obvious prepared photos for demo |
 | Address parsing fails | Hardcode normalizer for demo addresses |
