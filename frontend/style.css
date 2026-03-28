@@ -704,6 +704,46 @@ body { overscroll-behavior: none; }
   background: rgba(255,255,255,0.25);
 }
 
+/* Pending violation confirmation badge */
+.pending-badge {
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: rgba(229,57,53,0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 12px;
+  padding: 10px 20px;
+  pointer-events: none;
+  animation: pending-pulse 1.5s ease infinite;
+}
+.pending-badge.active {
+  display: flex;
+}
+.pending-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  letter-spacing: 0.08em;
+}
+.pending-hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: rgba(255,255,255,0.7);
+  letter-spacing: 0.1em;
+}
+@keyframes pending-pulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
 /* ================================================================
    STATE: REPORT
    ================================================================ */

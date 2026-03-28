@@ -225,6 +225,7 @@ let transcriptBuffer = '';
 let speakingTimeout = null;
 let violationCount = 0;
 let draftedViolations = [];
+let pendingViolation = null;
 let lastBriefingTranscript = '';
 let briefingTurnLocked = false;
 let briefingLiveText = '';
@@ -259,16 +260,33 @@ function handleTranscript(text, role) {
     if (role === 'model') {
       document.getElementById('vision-transcript-text').textContent = text;
       const lower = text.toLowerCase();
-      if (lower.includes('draft') || lower.includes('class')) {
-        violationCount++;
-        document.getElementById('vcount-num').textContent = violationCount;
+      // AI suggests a violation → store as pending, wait for user confirmation
+      if (lower.includes('class') && /class\s*[abc]/i.test(text)) {
         const classMatch = text.match(/class\s*([ABC])/i);
-        draftedViolations.push({
-          id: violationCount,
+        pendingViolation = {
           text: text.trim(),
           severity: classMatch ? classMatch[1].toUpperCase() : 'B',
           timestamp: new Date().toLocaleTimeString(),
+        };
+        showPendingBadge(true);
+      }
+    } else if (role === 'user') {
+      // User confirms → promote pending violation to drafted
+      const lower = text.toLowerCase();
+      const confirmed = /\b(yes|yeah|yep|correct|confirm|affirm|approved|do it|go ahead)\b/i.test(lower);
+      const rejected = /\b(no|nope|cancel|skip|wrong|reject|redo)\b/i.test(lower);
+      if (pendingViolation && confirmed) {
+        violationCount++;
+        draftedViolations.push({
+          ...pendingViolation,
+          id: violationCount,
         });
+        document.getElementById('vcount-num').textContent = violationCount;
+        pendingViolation = null;
+        showPendingBadge(false);
+      } else if (pendingViolation && rejected) {
+        pendingViolation = null;
+        showPendingBadge(false);
       }
     }
   }
@@ -739,6 +757,8 @@ document.addEventListener('DOMContentLoaded', () => {
   async function enterVisionMode() {
     violationCount = 0;
     draftedViolations = [];
+    pendingViolation = null;
+    showPendingBadge(false);
     document.getElementById('vcount-num').textContent = '0';
     document.getElementById('vision-transcript-text').textContent = '';
     const ctaWrap = document.getElementById('briefing-cta-wrap');
@@ -786,6 +806,11 @@ window.addEventListener('beforeunload', () => {
     ws.close(1000, 'page unload');
   }
 });
+
+function showPendingBadge(on) {
+  const badge = document.getElementById('pending-badge');
+  if (badge) badge.classList.toggle('active', on);
+}
 
 function populateReport() {
   const list = document.getElementById('report-violations-list');
