@@ -27,7 +27,7 @@ const MSG_TYPE_VIDEO = 0x02;
 // State machine
 // ---------------------------------------------------------------------------
 
-const STATES = ['idle', 'listening', 'briefing', 'vision'];
+const STATES = ['idle', 'listening', 'briefing', 'vision', 'report'];
 let currentState = 'idle';
 
 function setState(name) {
@@ -224,6 +224,8 @@ function setConnStatus(status, label) {
 let transcriptBuffer = '';
 let speakingTimeout = null;
 let violationCount = 0;
+let draftedViolations = [];
+let pendingViolation = null;
 let lastBriefingTranscript = '';
 let briefingTurnLocked = false;
 let briefingLiveText = '';
@@ -257,10 +259,33 @@ function handleTranscript(text, role) {
   } else if (currentState === 'vision') {
     if (role === 'model') {
       document.getElementById('vision-transcript-text').textContent = text;
-      // Count drafted violations (rough heuristic)
-      if (text.toLowerCase().includes('draft') || text.toLowerCase().includes('class')) {
+      const lower = text.toLowerCase();
+      // AI suggests a violation → store as pending, wait for user confirmation
+      if (lower.includes('class') && /class\s*[abc]/i.test(text)) {
+        const classMatch = text.match(/class\s*([ABC])/i);
+        pendingViolation = {
+          text: text.trim(),
+          severity: classMatch ? classMatch[1].toUpperCase() : 'B',
+          timestamp: new Date().toLocaleTimeString(),
+        };
+        showPendingBadge(true);
+      }
+    } else if (role === 'user') {
+      // User confirms → promote pending violation to drafted
+      const lower = text.toLowerCase();
+      const confirmed = /\b(yes|yeah|yep|correct|confirm|affirm|approved|do it|go ahead)\b/i.test(lower);
+      const rejected = /\b(no|nope|cancel|skip|wrong|reject|redo)\b/i.test(lower);
+      if (pendingViolation && confirmed) {
         violationCount++;
-        document.getElementById('vcount-num').textContent = violationCount;
+        draftedViolations.push({
+          ...pendingViolation,
+          id: violationCount,
+        });
+        pendingViolation = null;
+        showPendingBadge(false);
+      } else if (pendingViolation && rejected) {
+        pendingViolation = null;
+        showPendingBadge(false);
       }
     }
   }
@@ -553,15 +578,16 @@ async function unlockPlaybackAudio() {
   return playbackContext.state === 'running';
 }
 
-function playAudio(arrayBuffer) {
+async function playAudio(arrayBuffer) {
   agentSpeaking = true;
   audioQueue.push(arrayBuffer);
   if (!playbackContext) return;
   if (playbackContext.state === 'suspended') {
-    playbackContext.resume().then(() => {
-      if (!isPlaying) drainAudioQueue();
-    }).catch(() => {});
-    return;
+    try {
+      await playbackContext.resume();
+    } catch (e) {
+      console.warn('playAudio resume failed:', e);
+    }
   }
   if (!isPlaying) drainAudioQueue();
 }
@@ -573,7 +599,20 @@ function drainAudioQueue() {
     nextPlayTime = 0;
     return;
   }
-  if (!playbackContext || playbackContext.state !== 'running') {
+  if (!playbackContext) {
+    isPlaying = false;
+    return;
+  }
+  if (playbackContext.state === 'suspended') {
+    isPlaying = false;
+    playbackContext.resume().then(() => {
+      if (playbackContext.state === 'running' && audioQueue.length && !isPlaying) {
+        drainAudioQueue();
+      }
+    }).catch(() => {});
+    return;
+  }
+  if (playbackContext.state !== 'running') {
     isPlaying = false;
     return;
   }
@@ -683,6 +722,15 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('pointerdown', unlockOnce, { passive: true });
   window.addEventListener('click', unlockOnce, { passive: true });
 
+  // Watchdog: if audio is queued but context suspended on mobile, try to resume
+  setInterval(() => {
+    if (playbackContext && playbackContext.state === 'suspended' && audioQueue.length > 0) {
+      playbackContext.resume().then(() => {
+        if (!isPlaying && audioQueue.length) drainAudioQueue();
+      }).catch(() => {});
+    }
+  }, 500);
+
   // Mic button (idle state)
   document.getElementById('mic-button').addEventListener('click', async () => {
     if (!wsReady) {
@@ -707,6 +755,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function enterVisionMode() {
     violationCount = 0;
+    draftedViolations = [];
+    pendingViolation = null;
+    showPendingBadge(false);
     document.getElementById('vcount-num').textContent = '0';
     document.getElementById('vision-transcript-text').textContent = '';
     const ctaWrap = document.getElementById('briefing-cta-wrap');
@@ -725,6 +776,26 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('briefing-cta-vision').addEventListener('click', () => {
     enterVisionMode().catch(() => {});
   });
+
+  // Vision "Done" → show report
+  document.getElementById('vision-done').addEventListener('click', () => {
+    stopMic();
+    stopCamera();
+    populateReport();
+    setState('report');
+  });
+
+  // Report back → return to vision
+  document.getElementById('report-back').addEventListener('click', () => {
+    setState('vision');
+  });
+
+  // Report new inspection → back to idle
+  document.getElementById('report-new').addEventListener('click', () => {
+    draftedViolations = [];
+    violationCount = 0;
+    setState('idle');
+  });
 });
 
 window.addEventListener('beforeunload', () => {
@@ -734,6 +805,44 @@ window.addEventListener('beforeunload', () => {
     ws.close(1000, 'page unload');
   }
 });
+
+function showPendingBadge(on) {
+  const badge = document.getElementById('pending-badge');
+  if (badge) badge.classList.toggle('active', on);
+}
+
+function populateReport() {
+  const list = document.getElementById('report-violations-list');
+  list.innerHTML = '';
+  document.getElementById('report-count').textContent = draftedViolations.length;
+
+  if (draftedViolations.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'report-empty';
+    empty.textContent = 'No violations drafted during this inspection.';
+    list.appendChild(empty);
+    return;
+  }
+
+  draftedViolations.forEach((v) => {
+    const item = document.createElement('div');
+    item.className = 'report-violation-item';
+    item.innerHTML = `
+      <div class="report-v-header">
+        <span class="badge badge-${v.severity.toLowerCase()}">CLASS ${v.severity}</span>
+        <span class="report-v-time">${escapeHtml(v.timestamp)}</span>
+      </div>
+      <p class="report-v-text">${escapeHtml(v.text)}</p>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
 
 function resetBriefing() {
   // Hide and reset all data cards

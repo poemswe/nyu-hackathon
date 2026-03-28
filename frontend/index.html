@@ -155,9 +155,7 @@
     <div class="vision-header">
       <button class="back-btn light" id="vision-back">✕</button>
       <div class="wordmark-sm light">SLUMLORDWATCH</div>
-      <div class="violation-count-badge" id="violation-count">
-        <span id="vcount-num">0</span> drafted
-      </div>
+      <button class="vision-done-btn" id="vision-done">DONE</button>
     </div>
 
     <!-- "Analyzing" pulsing badge -->
@@ -166,10 +164,37 @@
       <span>Analyzing…</span>
     </div>
 
+    <!-- Pending violation confirmation badge -->
+    <div class="pending-badge" id="pending-badge">
+      <span class="pending-label">Confirm violation?</span>
+      <span class="pending-hint">Say "Yes" or "No"</span>
+    </div>
+
     <!-- Agent transcript overlay -->
     <div class="vision-transcript-bar" id="vision-transcript-bar">
       <span id="vision-transcript-text"></span>
     </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     STATE: REPORT
+     ============================================================ -->
+<div id="state-report" class="state">
+  <div class="report-header">
+    <button class="back-btn" id="report-back">&#x2190;</button>
+    <div class="wordmark-sm">SLUMLORDWATCH</div>
+    <div class="report-title-badge"><span id="report-count">0</span> VIOLATIONS</div>
+  </div>
+
+  <div class="report-body">
+    <h2 class="report-heading">INSPECTION REPORT</h2>
+    <div class="report-violations-list" id="report-violations-list"></div>
+  </div>
+
+  <div class="report-footer">
+    <button class="briefing-cta-btn" id="report-new">NEW INSPECTION</button>
   </div>
 </div>
 
