@@ -22,6 +22,8 @@ const AUDIO_INPUT_RATE = 16000;
 const AUDIO_OUTPUT_RATE = 24000;
 const MSG_TYPE_AUDIO = 0x01;
 const MSG_TYPE_VIDEO = 0x02;
+const ADDRESS_RE = /\b\d{1,6}\s+[a-z0-9.'\-\s]+\b(?:street|st|avenue|ave|road|rd|boulevard|blvd|drive|dr|lane|ln|place|pl|court|ct|terrace|ter|way|parkway|pkwy)\b/i;
+const BRIEFING_END_RE = /ready(?:\s+when\s+you\s+are|\s+for)?\s+for\s+the\s+visual\s+inspection\.?/i;
 
 // ---------------------------------------------------------------------------
 // State machine
@@ -70,6 +72,7 @@ function connectWS() {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
+      stopBriefingProgress();
       if (currentState === 'listening' && !briefingTurnLocked) {
         briefingTurnLocked = true;
         stopMic();
@@ -77,6 +80,7 @@ function connectWS() {
       }
       playAudio(evt.data);
       showSpeaking(true);
+      if (currentState !== 'vision') briefingAudioPackets += 1;
     } else {
       try {
         const msg = JSON.parse(evt.data);
@@ -150,10 +154,35 @@ function handleServerMessage(msg) {
       break;
 
     case 'turn_complete':
+      stopBriefingProgress();
       finalizeBriefingTranscript();
       showSpeaking(false);
       agentSpeaking = false;
       briefingTurnLocked = false;
+      if (currentState === 'vision') {
+        if (visionLiveText) {
+          visionDraftLines.push(visionLiveText);
+          visionLiveText = '';
+          lastVisionTranscript = '';
+          violationCount = visionDraftLines.length;
+          document.getElementById('vcount-num').textContent = violationCount;
+        }
+      }
+      if (currentState === 'briefing' && !briefingReadbackDone) {
+        const transcriptEl = document.getElementById('briefing-transcript');
+        const modelLines = Array.from(transcriptEl.querySelectorAll('p:not(.status-line)'))
+          .map((p) => normalizeTranscriptText(p.textContent))
+          .filter(Boolean);
+        const text = normalizeTranscriptText(modelLines.join(' '));
+        if ((briefingFinalDetected || briefingAudioPackets > 0) && text && 'speechSynthesis' in window) {
+          const utter = new SpeechSynthesisUtterance(text);
+          utter.rate = 1;
+          utter.pitch = 1;
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(utter);
+        }
+        briefingReadbackDone = true;
+      }
       if (currentState === 'briefing') {
         const ctaWrap = document.getElementById('briefing-cta-wrap');
         if (ctaWrap) ctaWrap.style.display = 'block';
@@ -174,11 +203,6 @@ function normalizeTranscriptText(text) {
 function handleProgress(text) {
   const clean = normalizeTranscriptText(text);
   if (!clean) return;
-  if (currentState === 'listening') {
-    briefingTurnLocked = true;
-    stopMic();
-    setState('briefing');
-  }
   appendStatusLine(clean);
   speakProgress(clean);
 }
@@ -233,6 +257,11 @@ let briefingLiveText = '';
 let briefingLiveEl = null;
 let progressSpeechEnabled = true;
 let lastProgressSpoken = '';
+let briefingProgressTimers = [];
+let briefingAudioPackets = 0;
+let briefingFinalDetected = false;
+let briefingReadbackDone = false;
+let draftReviewMode = false;
 
 function handleTranscript(text, role) {
   if (!text) return;
@@ -241,6 +270,12 @@ function handleTranscript(text, role) {
   if (currentState === 'listening') {
     if (role === 'user') {
       document.getElementById('transcript-text').textContent = clean;
+      if (looksLikeAddress(clean) && !briefingTurnLocked) {
+        briefingTurnLocked = true;
+        stopMic();
+        setState('briefing');
+        appendStatusLine(`Address captured: ${clean}`);
+      }
     } else if (role === 'model') {
       const asking = /address|try again|which building|what building|could you repeat/i.test(clean);
       if (asking) {
@@ -252,7 +287,11 @@ function handleTranscript(text, role) {
     }
   } else if (currentState === 'briefing') {
     if (role === 'model') {
+      stopBriefingProgress();
       appendBriefingTranscript(clean);
+      if (BRIEFING_END_RE.test(clean)) {
+        briefingFinalDetected = true;
+      }
       showSpeaking(true);
       clearTimeout(speakingTimeout);
       speakingTimeout = setTimeout(() => showSpeaking(false), 2500);
@@ -307,23 +346,66 @@ function finalizeBriefingTranscript() {
   lastProgressSpoken = '';
 }
 
+function looksLikeAddress(text) {
+  if (!text) return false;
+  const normalized = normalizeTranscriptText(text);
+  if (!ADDRESS_RE.test(normalized)) return false;
+  return /,\s*(bronx|brooklyn|manhattan|queens|staten island|nyc|new york)/i.test(normalized)
+    || /\b\d{1,6}\b/.test(normalized);
+}
+
+function clearBriefingProgressTimers() {
+  briefingProgressTimers.forEach(clearTimeout);
+  briefingProgressTimers = [];
+}
+
+function startBriefingProgress() {
+  clearBriefingProgressTimers();
+  const steps = [
+    { delay: 300, text: 'Pulling open violations from HPD records...' },
+    { delay: 1500, text: 'Checking 311 complaint trend for the last 12 months...' },
+    { delay: 2800, text: 'Resolving registered owner and LLC portfolio...' },
+    { delay: 4200, text: 'Assembling intelligence briefing...' },
+  ];
+  steps.forEach((step) => {
+    const tid = setTimeout(() => {
+      if (currentState !== 'listening' && currentState !== 'briefing') return;
+      appendStatusLine(step.text);
+      speakProgress(step.text);
+    }, step.delay);
+    briefingProgressTimers.push(tid);
+  });
+}
+
+function stopBriefingProgress() {
+  clearBriefingProgressTimers();
+}
+
+function setDraftReviewMode(on) {
+  draftReviewMode = !!on;
+  const briefing = document.getElementById('state-briefing');
+  if (briefing) {
+    briefing.classList.toggle('draft-review', draftReviewMode);
+  }
+}
+
 function appendVisionDraft(text) {
   if (!text || text === lastVisionTranscript) return;
   lastVisionTranscript = text;
 
+  const norm = text.toLowerCase();
+  const liveNorm = visionLiveText.toLowerCase();
+
   if (!visionLiveText) {
     visionLiveText = text;
-  } else if (text.startsWith(visionLiveText)) {
+  } else if (norm.startsWith(liveNorm)) {
     visionLiveText = text;
-  } else if (visionLiveText.startsWith(text)) {
+  } else if (liveNorm.startsWith(norm)) {
     return;
   } else {
-    visionDraftLines.push(visionLiveText);
-    visionLiveText = text;
+    const joiner = /^[,.;:!?)]/.test(text) ? '' : ' ';
+    visionLiveText = `${visionLiveText}${joiner}${text}`.trim();
   }
-  const count = visionDraftLines.length + (visionLiveText ? 1 : 0);
-  document.getElementById('vcount-num').textContent = count;
-  violationCount = count;
 }
 
 function finalizeVisionDraft() {
@@ -566,11 +648,12 @@ async function unlockPlaybackAudio() {
     }
   }
   if (playbackContext.state === 'running' && !playbackUnlocked) {
-    const silent = playbackContext.createBuffer(1, 1, AUDIO_OUTPUT_RATE);
-    const src = playbackContext.createBufferSource();
-    src.buffer = silent;
-    src.connect(playbackContext.destination);
-    src.start();
+    const osc = playbackContext.createOscillator();
+    const gain = playbackContext.createGain();
+    gain.gain.value = 0;
+    osc.connect(gain);
+    gain.connect(playbackContext.destination);
+    osc.start();
     playbackUnlocked = true;
   }
   if (playbackContext.state === 'running' && audioQueue.length && !isPlaying) {
@@ -693,7 +776,6 @@ function captureFrame() {
 // ---------------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Connect WebSocket immediately
   connectWS();
 
   // Mobile autoplay policy workaround: unlock once on first user gesture.
@@ -719,20 +801,32 @@ document.addEventListener('DOMContentLoaded', () => {
     resetBriefing();
     const cta = document.querySelector('.cta-text');
     if (cta) cta.textContent = 'Tap to speak an address';
+    setDraftReviewMode(false);
     sendControl({ type: 'start_turn', mode: 'briefing' });
+    briefingAudioPackets = 0;
+    briefingFinalDetected = false;
+    briefingReadbackDone = false;
+    startBriefingProgress();
     startMic();
   });
 
   // Back buttons
-  document.getElementById('listen-back').addEventListener('click', () => setState('idle'));
+  document.getElementById('listen-back').addEventListener('click', () => {
+    setDraftReviewMode(false);
+    setState('idle');
+  });
   document.getElementById('briefing-back').addEventListener('click', () => {
     stopMic();
+    setDraftReviewMode(false);
     setState('idle');
   });
   document.getElementById('vision-back').addEventListener('click', () => {
     finalizeVisionDraft();
-    renderDraftPanel();
     setState('briefing');
+    setDraftReviewMode(true);
+    renderDraftPanel();
+    const ctaWrap = document.getElementById('briefing-cta-wrap');
+    if (ctaWrap) ctaWrap.style.display = 'block';
   });
 
   async function enterVisionMode() {
@@ -740,8 +834,13 @@ document.addEventListener('DOMContentLoaded', () => {
     visionLiveText = '';
     lastVisionTranscript = '';
     violationCount = 0;
+    audioQueue.length = 0;
+    isPlaying = false;
+    agentSpeaking = false;
+    nextPlayTime = 0;
     document.getElementById('vcount-num').textContent = '0';
     document.getElementById('vision-transcript-text').textContent = '';
+    setDraftReviewMode(false);
     const ctaWrap = document.getElementById('briefing-cta-wrap');
     if (ctaWrap) ctaWrap.style.display = 'none';
     sendControl({ type: 'start_turn', mode: 'vision' });
@@ -772,7 +871,22 @@ function renderDraftPanel() {
   const panel = document.getElementById('draft-panel');
   const lines = document.getElementById('draft-lines');
   if (!visionDraftLines.length) {
-    panel.style.display = 'none';
+    const fallback = normalizeTranscriptText(document.getElementById('vision-transcript-text').textContent || '');
+    if (fallback) {
+      visionDraftLines.push(fallback);
+    }
+  }
+  if (!visionDraftLines.length) {
+    lines.innerHTML = '';
+    const div = document.createElement('div');
+    div.className = 'draft-line';
+    const txt = document.createElement('span');
+    txt.className = 'draft-line-text';
+    txt.textContent = 'No observations captured yet. Return to Visual Inspection and narrate findings to draft violations.';
+    div.appendChild(txt);
+    lines.appendChild(div);
+    document.getElementById('draft-count').textContent = '0 observations';
+    panel.style.display = 'block';
     return;
   }
   lines.innerHTML = '';
@@ -792,9 +906,15 @@ function renderDraftPanel() {
   document.getElementById('draft-count').textContent =
     `${visionDraftLines.length} observation${visionDraftLines.length === 1 ? '' : 's'}`;
   panel.style.display = 'block';
+  requestAnimationFrame(() => {
+    const briefing = document.getElementById('state-briefing');
+    briefing.scrollTop = briefing.scrollHeight;
+  });
 }
 
 function resetBriefing() {
+  stopBriefingProgress();
+  setDraftReviewMode(false);
   // Hide and reset all data cards
   ['card-violations', 'card-owner', 'card-complaints', 'card-portfolio'].forEach(id => {
     const card = document.getElementById(id);
@@ -818,6 +938,9 @@ function resetBriefing() {
   briefingLiveText = '';
   briefingLiveEl = null;
   lastProgressSpoken = '';
+  briefingAudioPackets = 0;
+  briefingFinalDetected = false;
+  briefingReadbackDone = false;
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
   }

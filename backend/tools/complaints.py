@@ -66,7 +66,7 @@ async def get_building_complaints(bbl: str) -> dict:
                 "bbl": bbl,
                 "$where": f"received_date > '{twelve_months_ago}'",
                 "$limit": 500,
-                "$select": "major_category,status,received_date,type",
+                "$select": "major_category,complaint_status,received_date,type",
                 "$order": "received_date DESC",
             }
             resp = await client.get(COMPLAINTS_ENDPOINT, params=params)
@@ -109,7 +109,7 @@ async def get_building_complaints(bbl: str) -> dict:
             {
                 "type": c.get("type", ""),
                 "major_category": c.get("major_category", ""),
-                "status": c.get("status", ""),
+                "status": c.get("complaint_status", ""),
                 "received_date": c.get("received_date", "")[:10],
             }
             for c in complaints[:5]

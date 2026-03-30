@@ -625,6 +625,18 @@ html, body {
   color: var(--text);
 }
 
+/* Stage 3: keep briefing shell but focus on draft report review */
+#state-briefing.draft-review .data-cards,
+#state-briefing.draft-review .briefing-transcript,
+#state-briefing.draft-review .agent-speaking,
+#state-briefing.draft-review .briefing-cta-wrap {
+  display: none !important;
+}
+
+#state-briefing.draft-review .draft-panel {
+  margin-top: 12px;
+}
+
 /* ================================================================
    STATE: VISION
    ================================================================ */

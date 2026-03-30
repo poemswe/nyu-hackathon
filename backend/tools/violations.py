@@ -84,7 +84,7 @@ async def get_building_violations(address: str) -> dict:
                 "boro": borough,
                 "violationstatus": "Open",
                 "$limit": 500,
-                "$select": "boroid,block,lot,class,novdescription,inspectiondate,unittype,apt",
+                "$select": "boroid,block,lot,class,novdescription,inspectiondate,apartment",
             }
             resp = await client.get(VIOLATIONS_ENDPOINT, params=open_params)
             resp.raise_for_status()
@@ -100,7 +100,7 @@ async def get_building_violations(address: str) -> dict:
                 "boro": borough,
                 "$where": f"currentstatus='CERTIFICATION CLOSEOUT' AND currentstatusdate > '{ninety_days_ago}'",
                 "$limit": 20,
-                "$select": "novdescription,currentstatusdate,apt,class",
+                "$select": "novdescription,currentstatusdate,apartment,class",
             }
             cert_resp = await client.get(VIOLATIONS_ENDPOINT, params=cert_params)
             cert_resp.raise_for_status()
@@ -142,7 +142,7 @@ async def get_building_violations(address: str) -> dict:
             {
                 "novdescription": c.get("novdescription", ""),
                 "certifieddate": c.get("currentstatusdate", ""),
-                "unit": c.get("apt", ""),
+                "unit": c.get("apartment", ""),
                 "class": c.get("class", ""),
             }
             for c in certs[:5]

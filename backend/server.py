@@ -71,7 +71,7 @@ async def websocket_endpoint(websocket: WebSocket):
         )
 
         session_id = f"field-{uuid.uuid4().hex[:8]}"
-        session = await session_service.create_session(
+        await session_service.create_session(
             app_name="slumlordwatch",
             user_id="inspector",
             session_id=session_id,
@@ -142,11 +142,6 @@ async def websocket_endpoint(websocket: WebSocket):
                                 turn_mode = msg.get("mode", "briefing")
                                 completed_model_turns = 0
                                 model_output_seen_in_turn = False
-                                if turn_mode == "briefing":
-                                    await websocket.send_json({
-                                        "type": "progress",
-                                        "text": "Listening for address..."
-                                    })
                         except json.JSONDecodeError:
                             pass
 
