@@ -5,7 +5,7 @@ Run this BEFORE the hackathon to populate demo_cache.json with live data.
 This ensures demo reliability even if the NYC Open Data API is slow.
 
 Usage:
-    cd slumlordwatch
+    cd sightline
     python scripts/build_cache.py
 """
 
@@ -75,7 +75,7 @@ async def fetch_all_for_address(address: str) -> dict:
 
 
 async def main():
-    print("SlumlordWatch — Demo Cache Builder")
+    print("Sightline — Demo Cache Builder")
     print("=" * 40)
 
     # Load existing cache to merge into

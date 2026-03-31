@@ -1,5 +1,5 @@
 """
-FastAPI + WebSocket bridge for SlumlordWatch
+FastAPI + WebSocket bridge for Sightline
 Proxies audio/video frames between the PWA and Gemini Live via ADK run_live.
 
 Architecture:
@@ -24,7 +24,7 @@ logging.basicConfig(level=logging.INFO)
 
 BRIEFING_END_RE = re.compile(r"ready(?:\s+when\s+you\s+are|\s+for)?\s+for\s+the\s+visual\s+inspection\.?", re.IGNORECASE)
 
-app = FastAPI(title="SlumlordWatch API")
+app = FastAPI(title="Sightline API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -40,7 +40,7 @@ FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "slumlordwatch"}
+    return {"status": "ok", "service": "sightline"}
 
 
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
@@ -66,13 +66,13 @@ async def websocket_endpoint(websocket: WebSocket):
         session_service = InMemorySessionService()
         runner = Runner(
             agent=root_agent,
-            app_name="slumlordwatch",
+            app_name="sightline",
             session_service=session_service,
         )
 
         session_id = f"field-{uuid.uuid4().hex[:8]}"
         await session_service.create_session(
-            app_name="slumlordwatch",
+            app_name="sightline",
             user_id="inspector",
             session_id=session_id,
         )

@@ -1,12 +1,12 @@
 """
-SlumlordWatch Field Intelligence Agent
+Sightline Field Intelligence Agent
 Powered by Gemini Live via Google ADK
 
 HOURS 1-2: Run with `adk web` — voice in/out working, no tools yet.
 HOURS 3-4: Add 4 tools, confirm full briefing with real data.
 
 Usage:
-    cd slumlordwatch/backend
+    cd backend
     adk web
 """
 
@@ -121,7 +121,7 @@ def _tool_get_owner_portfolio(owner_name: str, corporate_name: str = "") -> str:
 # ---------------------------------------------------------------------------
 
 root_agent = Agent(
-    name="slumlordwatch",
+    name="sightline",
     model="gemini-live-2.5-flash-native-audio",
     description="NYC HPD field intelligence agent for housing inspectors. Delivers spoken building briefings and classifies violations from camera.",
     instruction=SYSTEM_PROMPT,
@@ -138,7 +138,7 @@ root_agent = Agent(
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    print("SlumlordWatch agent loaded.")
+    print("Sightline agent loaded.")
     print("Run with: adk web")
     print("")
     print("Or test address parsing:")

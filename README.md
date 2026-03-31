@@ -1,77 +1,73 @@
-# Sightline — Field Intelligence Agent for NYC Housing Enforcement
+# Sightline — Field Intelligence for NYC Housing Inspectors
 
-> "The data was always public. We just made it impossible to hide in plain sight."
-
-Built for the Google Cloud x Gemini Hackathon · March 2026
+Built for the Google Cloud x Gemini Hackathon, March 2026
 
 ---
 
 ## The Problem
 
-Every day, HPD inspectors walk into buildings with a clipboard and a single complaint. What they don't have is context.
+Every day, HPD inspectors walk into buildings with a clipboard and a single complaint. The landlord has a portfolio management system, lawyers, and shell companies. The inspector has a clipboard.
 
-The landlord has a portfolio management system, lawyers, and shell companies. The inspector has a clipboard.
-
-- **784,000+** inspections per year across 110,000 buildings — with a team of ~350 inspectors
-- That's roughly **9 buildings every single working day** per inspector
+- **784,000+** inspections per year across 110,000 buildings, handled by ~350 inspectors
 - A NY State Comptroller audit found one Brooklyn building that filed **175 complaints over 2 years** and received **zero completed inspections**
 - Hazardous (Class B) and immediately hazardous (Class C) violations grew **32% year-over-year** in FY2024
-- The worst conditions are overwhelmingly concentrated in low-income Black and Latino neighborhoods in the South Bronx, Brownsville, and East New York
+- The worst conditions concentrate in low-income Black and Latino neighborhoods in the South Bronx, Brownsville, and East New York
 
-The system has all the data to prove it. It just never connects the dots.
+The data to prove all of this is public. Nobody connects the dots.
 
 ---
 
 ## The Solution
 
-Sightline is a voice + vision agent powered by **Gemini Live API** and **Google ADK**.
+Sightline is a voice + vision agent powered by **Gemini Live API** (`gemini-live-2.5-flash-native-audio`) and **Google ADK**.
 
-An inspector speaks a building address while walking to the building. The agent assembles a spoken intelligence brief in under 45 seconds:
+An inspector speaks a building address while walking to a site. The agent assembles a spoken intelligence brief in under 45 seconds:
 
-- Full violation history by class (A/B/C)
-- Ownership chain across all LLCs
-- Complaint patterns and 12-month trend
-- Portfolio size across all landlord buildings
-- Worst Landlord Watchlist status
-- Recently "certified as fixed" violations to re-verify on-site
+- Open violations by class (A/B/C), with specific conditions and affected units
+- Complaint patterns over the past 12 months, trending up or down
+- Registered owner and corporate entity, traced through LLC registrations
+- Total portfolio size across all landlord buildings
+- Worst Landlord Watchlist status and rank
+- Recently "certified as fixed" violations flagged for on-site re-verification
 
-They point their phone at the building — the agent classifies conditions in real time, proposes violation classes, and drafts the violation report through natural conversation.
+Then the inspector points their phone at the building. The agent classifies conditions from camera frames in real time, proposes violation classes through conversation, and drafts the violation report by voice.
 
-**No forms. No dashboards. No friction.**
+No forms. No dashboards. No typing.
 
 ---
 
 ## Why the Inspector, Not the Tenant
 
-Most civic technology puts the burden on the victim. We flip that.
+Most civic tech puts the burden on the victim. Sightline targets the person who already has institutional power. Inspectors already enter buildings; we make each visit radically more informed.
 
-Our user is the person who already has institutional power. Inspectors already go into buildings — we just make each visit exponentially more informed.
+A landlord with 800 violations across 30 buildings triggers HPD's **Alternative Enforcement Program (AEP)**, the city's most powerful enforcement tool. Sightline surfaces that flag automatically, in the field, in real time.
 
-The inequality isn't just in the building conditions — it's in the **information asymmetry** between a well-lawyered landlord with a portfolio management system and an overworked inspector with a clipboard.
-
-Knowing a landlord has 800 violations across 30 buildings is the threshold that activates HPD's **Alternative Enforcement Program (AEP)** — the city's most powerful enforcement tool. Our agent surfaces that flag automatically, in the field, in real time.
-
-The tenant never has to touch it. They just get to live somewhere safer.
+The tenant never touches the app. They just get to live somewhere safer.
 
 ---
 
 ## Three Capabilities
 
-### 1. Voice Brief — before the inspector walks in
-Inspector speaks an address → agent calls tools in sequence → speaks a structured brief:
-> *"1520 Sedgwick Avenue, Bronx. 47 open violations — 14 Class C immediately hazardous, including lead paint and no heat. The registered owner is Koscal 59 LLC, operating 29 buildings with 2,300 combined violations. Number 3 on the 2025 Worst Landlord Watchlist. 3 violations certified as fixed last month — you may want to verify those on-site. Ready when you are for the visual inspection."*
+### 1. Voice Brief
 
-### 2. Vision Logging — on the ground
-Inspector activates camera → Gemini Live receives frames at 1 FPS → agent identifies conditions and proposes violation classifications:
-- Water damage / active leak → suggested Class C
-- Mold / mildew → suggested Class B
-- Peeling paint (pre-1978 building) → suggested Class C
-- Pest evidence → suggested Class B
+Inspector speaks an address. The agent calls four tools in sequence and speaks a structured brief:
+
+> *"1520 Sedgwick Avenue, Bronx. 47 open violations -- 14 Class C immediately hazardous, including lead paint and no heat. The registered owner is Koscal 59 LLC, operating 29 buildings with 2,300 combined violations. Number 3 on the 2025 Worst Landlord Watchlist. 3 violations certified as fixed last month -- you may want to verify those on-site. Ready when you are for the visual inspection."*
+
+### 2. Vision Logging
+
+Inspector activates the camera. Gemini Live receives frames at ~1 FPS and identifies conditions:
+
+- Water damage / active leak -- suggested Class C
+- Mold / mildew -- suggested Class B
+- Peeling paint (pre-1978 building) -- suggested Class C
+- Pest evidence -- suggested Class B
 
 All classifications are framed as suggestions requiring inspector confirmation.
 
-### 3. Auto-Draft Report — no paperwork
-Agent assembles the violation report through voice conversation. Inspector confirms by voice. What used to take hours of cross-referencing happens in a 2-minute conversation on the sidewalk.
+### 3. Auto-Draft Report
+
+The agent accumulates observations through voice conversation during the visual inspection. On exit, it presents a structured violation draft grouped by model turn. What used to take hours of cross-referencing happens in a 2-minute conversation on the sidewalk.
 
 ---
 
@@ -79,117 +75,114 @@ Agent assembles the violation report through voice conversation. Inspector confi
 
 ```
 Browser (Mobile PWA)          Python Backend (Cloud Run)       Gemini Live API
-┌──────────────────┐          ┌──────────────────────┐         ┌─────────────┐
-│ 4-state UI        │  WS      │ FastAPI               │  WS     │             │
-│ Idle → Listening  │◄────────►│ ADK Agent             │◄───────►│  Gemini     │
-│ Briefing → Vision │          │ LiveRequestQueue       │         │  Live       │
-└──────────────────┘          └──────────┬────────────┘         └─────────────┘
-                                         │ HTTP (SODA API)
-                                         ▼
-                              ┌──────────────────────┐
-                              │ NYC Open Data         │
-                              │ HPD Violations        │
-                              │ HPD Complaints        │
-                              │ HPD Registration      │
-                              │ Watchlist JSON (local)│
-                              └──────────────────────┘
++-----------------+           +---------------------+          +-----------+
+| 4-state UI      |   WS     | FastAPI              |   WS    |           |
+| Idle > Listen   |<-------->| ADK Agent            |<------->| Gemini    |
+| Brief > Vision  |          | LiveRequestQueue     |         | Live      |
++-----------------+          +----------+-----------+          +-----------+
+                                        | HTTP (SODA API)
+                                        v
+                             +---------------------+
+                             | NYC Open Data        |
+                             | HPD Violations       |
+                             | HPD Complaints       |
+                             | HPD Registration     |
+                             | Watchlist JSON       |
+                             +---------------------+
 ```
 
 **Key decisions:**
-- **Cloud Run** for the backend — holds WebSocket connections for the full Live API session duration
-- **ADK `run_live`** with `LiveRequestQueue` — handles streaming, tool execution, and reconnection
-- **No database** — cache-first with local JSON for demo reliability, live SODA API queries otherwise
-- **PWA on Firebase Hosting** — judges open a URL on their phone, no install required
-- **Model:** `gemini-2.0-flash-live-001` via Gemini API
+
+- **Cloud Run** hosts both the backend and the PWA static files. WebSocket connections persist for the full Live API session.
+- **ADK `run_live`** with `LiveRequestQueue` handles bidirectional streaming, tool execution, and audio transcription.
+- **No database.** Local JSON cache for demo reliability; live SODA API queries for everything else.
+- **Zero-gain oscillator** on the AudioContext keeps mobile Chrome from suspending audio playback between speech segments.
+- **Model:** `gemini-live-2.5-flash-native-audio` via Vertex AI
 
 ---
 
 ## Data Sources
 
-| Dataset | API | Notes |
+| Dataset | Endpoint | Purpose |
 |---|---|---|
-| HPD Violations | `data.cityofnewyork.us/resource/wvxf-dwi5.json` | Open violations by class, false cert detection |
-| HPD Complaints | `data.cityofnewyork.us/resource/ygpa-z7cr.json` | 12-month trend, category breakdown |
-| HPD Registration | `data.cityofnewyork.us/resource/tesw-yqqr.json` | Owner identity, managing agent |
-| Registration Contacts | `data.cityofnewyork.us/resource/feu5-w2e2.json` | Corporate + individual owner lookup |
-| Worst Landlord Watchlist | Local JSON | Pre-built, checked into repo |
+| HPD Violations | `wvxf-dwi5` | Open violations by class, false cert detection |
+| HPD Complaints | `ygpa-z7cr` | 12-month trend, category breakdown by BBL |
+| HPD Registration | `tesw-yqqr` | Building registration, owner identity |
+| Registration Contacts | `feu5-w2e2` | Corporate + individual owner + managing agent |
+| Worst Landlord Watchlist | Local JSON | Pre-built from public advocate data |
 | Portfolio Stats | Local JSON | Pre-computed for top watchlist landlords |
 
-All sources are public NYC Open Data — no auth required.
-
----
-
-## Why This Is Agentic — Not a Wrapper
-
-- Reasons autonomously across multiple fragmented public datasets
-- Identifies LLC shell company patterns no single database query would surface
-- Decides what's relevant, what's a red flag, what needs escalation
-- Acts — drafting violation reports, surfacing cross-building risk, flagging AEP triggers
-- All through live voice and vision, in real time, on the street
+All queries hit `data.cityofnewyork.us/resource/{id}.json` (SODA API). No auth required.
 
 ---
 
 ## Setup
 
 ```bash
-# 1. Clone the repo
 git clone https://github.com/poemswe/nyu-hackathon.git
 cd nyu-hackathon
 
-# 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Set your Gemini API key
-export GOOGLE_API_KEY=your_key_here         # macOS/Linux
-$env:GOOGLE_API_KEY = "your_key_here"       # Windows PowerShell
+# Option A: Vertex AI (used in production)
+export GOOGLE_CLOUD_PROJECT=your-project-id
+export GOOGLE_CLOUD_LOCATION=us-central1
+export GOOGLE_GENAI_USE_VERTEXAI=True
 
+# Option B: Gemini API key
+export GOOGLE_API_KEY=your_key_here
 export GOOGLE_GENAI_USE_VERTEXAI=False
-$env:GOOGLE_GENAI_USE_VERTEXAI = "False"    # Windows
 
-# 4. Run the backend
 uvicorn backend.server:app --reload --port 8080
+# Open http://localhost:8080
+```
 
-# 5. Open in browser
-# http://localhost:8080
+### Deploy to Cloud Run
+
+```bash
+gcloud run deploy slumlordwatch \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --port 8080 \
+  --memory 512Mi \
+  --timeout 300
 ```
 
 ---
 
-## Demo Addresses
+## Project Structure
 
-| Address | What happens |
-|---|---|
-| 1520 Sedgwick Ave, Bronx | 47 violations, Koscal 59 LLC, #3 on Watchlist — full briefing |
-| 515 Park Ave, Manhattan | Zero violations, zero complaints — the silence lands |
+```
+backend/
+  agent.py          # ADK agent definition, system prompt, tool wrappers
+  server.py         # FastAPI + WebSocket bridge (browser <-> Gemini Live)
+  normalizer.py     # Address parsing, street name normalization for SODA API
+  tools/
+    violations.py   # HPD violations by address (Tool 1, returns BBL)
+    complaints.py   # HPD complaints by BBL (Tool 2, parallel)
+    owner.py        # Registration + contacts lookup (Tool 3, parallel)
+    portfolio.py    # Pre-computed portfolio stats (Tool 4, instant)
+  data/
+    watchlist.json  # Worst Landlord Watchlist
+    portfolio.json  # Portfolio statistics for top landlords
+    demo_cache.json # Cached responses for demo addresses
 
----
-
-## Phase 2
-
-Same agentic system, tenant-facing side. A tenant asks: *"I reported mold 3 weeks ago. What's the status?"* The agent pulls inspection date, violations issued, correction deadline — in plain language, any language, mobile-first.
-
-Both ends of the enforcement chain. The loop finally closed.
+frontend/
+  index.html        # 4-state PWA: idle, listening, briefing, vision
+  app.js            # WebSocket client, audio pipeline, state machine
+  style.css         # Mobile-first dark UI
+```
 
 ---
 
 ## Team
 
-Built at the Google Cloud x Gemini Hackathon · March 2026
+Built at the Google Cloud x Gemini Hackathon, March 2026
 
-| Name | 
-|---|
-| [Poe Mynt Swe] |
-| [Sarah Machado] |
-| [Fatema Ortega] |
-| [Chirag Dhiwar] |
-| [Lavinia Lin] |
-
----
-
-## Branch Notes
-
-Active development branch: `bugfix-demo`
-- Fixed audio playback blocked by tool-call turn completions
-- Fixed briefing CTA view not showing after agent finishes speaking
-- Fixed vision back button resetting UI to idle state
-- Fixed model name for Gemini API (non-Vertex) auth path
+| Name | Role |
+|---|---|
+| Poe Myint Swe | Engineering (architecture, backend, frontend, infra) |
+| Sarah Machado | Product lead, presentation, concept |
+| Fatema Ortega | Concept and research |
+| Chirag Dhiwar | Engineering (contributor) |

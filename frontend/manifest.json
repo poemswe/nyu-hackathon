@@ -1,6 +1,6 @@
 {
-  "name": "SlumlordWatch",
-  "short_name": "SlumlordWatch",
+  "name": "Sightline",
+  "short_name": "Sightline",
   "description": "HPD Field Intelligence Agent",
   "start_url": "/",
   "display": "standalone",

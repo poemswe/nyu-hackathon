@@ -1,5 +1,5 @@
 /**
- * SlumlordWatch PWA — app.js
+ * Sightline PWA — app.js
  * 4-state inspector UI: Idle → Listening → Briefing → Vision
  *
  * Audio: getUserMedia → PCM → WebSocket → Gemini Live → AudioContext playback
