@@ -1,5 +1,7 @@
 # Sightline — Field Intelligence for NYC Housing Inspectors
 
+**Live demo:** [sightline.poemswe.com](https://sightline.poemswe.com)
+
 Built for the Google Cloud x Gemini Hackathon, March 2026
 
 ---

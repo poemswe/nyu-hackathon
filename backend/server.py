@@ -10,7 +10,9 @@ Architecture:
 import asyncio
 import json
 import logging
+import time
 import uuid
+from collections import defaultdict
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -21,6 +23,14 @@ import re
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+
+MAX_CONCURRENT = 5
+MAX_PER_IP = 2
+SESSION_TIMEOUT = 600  # 10 minutes
+
+_active_connections: int = 0
+_connections_by_ip: dict[str, int] = defaultdict(int)
+_lock = asyncio.Lock()
 
 BRIEFING_END_RE = re.compile(r"ready(?:\s+when\s+you\s+are|\s+for)?\s+for\s+the\s+visual\s+inspection\.?", re.IGNORECASE)
 
@@ -51,9 +61,33 @@ async def index():
     return FileResponse(FRONTEND_DIR / "index.html")
 
 
+def _get_client_ip(websocket: WebSocket) -> str:
+    forwarded = websocket.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return websocket.client.host if websocket.client else "unknown"
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    global _active_connections
+    client_ip = _get_client_ip(websocket)
+
+    async with _lock:
+        if _active_connections >= MAX_CONCURRENT:
+            await websocket.close(code=1013, reason="Server at capacity")
+            logger.warning(f"Rejected {client_ip}: global limit ({_active_connections}/{MAX_CONCURRENT})")
+            return
+        if _connections_by_ip[client_ip] >= MAX_PER_IP:
+            await websocket.close(code=1013, reason="Too many connections from this IP")
+            logger.warning(f"Rejected {client_ip}: per-IP limit ({_connections_by_ip[client_ip]}/{MAX_PER_IP})")
+            return
+        _active_connections += 1
+        _connections_by_ip[client_ip] += 1
+
     await websocket.accept()
+    session_start = time.monotonic()
+    logger.info(f"Connection from {client_ip} ({_active_connections} active, {_connections_by_ip[client_ip]} from this IP)")
 
     try:
         from google.adk.runners import Runner
@@ -208,10 +242,18 @@ async def websocket_endpoint(websocket: WebSocket):
             except Exception as e:
                 logger.error(f"send_to_browser error: {e}")
 
+        async def session_timer():
+            remaining = SESSION_TIMEOUT - (time.monotonic() - session_start)
+            if remaining > 0:
+                await asyncio.sleep(remaining)
+            await websocket.send_json({"type": "error", "message": "Session time limit reached"})
+            await websocket.close(code=1000, reason="Session timeout")
+
         recv_task = asyncio.create_task(receive_from_browser())
         send_task = asyncio.create_task(send_to_browser())
+        timer_task = asyncio.create_task(session_timer())
         done, pending = await asyncio.wait(
-            [recv_task, send_task], return_when=asyncio.FIRST_COMPLETED
+            [recv_task, send_task, timer_task], return_when=asyncio.FIRST_COMPLETED
         )
         for task in pending:
             task.cancel()
@@ -227,3 +269,10 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.send_json({"type": "error", "message": str(e)})
         except Exception:
             pass
+    finally:
+        async with _lock:
+            _active_connections -= 1
+            _connections_by_ip[client_ip] -= 1
+            if _connections_by_ip[client_ip] <= 0:
+                del _connections_by_ip[client_ip]
+        logger.info(f"Closed {client_ip} ({_active_connections} active)")
